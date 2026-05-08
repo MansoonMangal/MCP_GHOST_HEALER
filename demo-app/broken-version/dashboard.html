@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealQA Platform — Dashboard (v2.0 - Broken Locators)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body class="dashboard-body">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="icon">🛡️</div>
+      <span>HealQA</span>
+    </div>
+    <!-- WORKING: aria-label="Dashboard" (unchanged) -->
+    <a href="#" class="nav-item active" aria-label="Dashboard">📊 Dashboard <span class="dot"></span></a>
+    <!--
+      ❌ BREAKING CHANGE: aria-label changed from "Reports" → "View Reports"
+    -->
+    <a href="#" class="nav-item" aria-label="View Reports">📋 Reports</a>
+    <a href="#" class="nav-item" aria-label="Team Members">👥 Users</a>
+    <a href="#" class="nav-item" aria-label="Configuration">⚙️ Settings</a>
+    <!--
+      ❌ BREAKING CHANGE: class changed from "logout-btn" → "btn-signout"
+    -->
+    <button class="btn-signout btn-danger" onclick="window.location.href='../index.html'"
+            style="margin: auto 8px 16px; width: calc(100% - 16px);">
+      Logout
+    </button>
+  </aside>
+
+  <main class="main-content">
+    <div class="topbar">
+      <h2>Automation Dashboard</h2>
+      <div class="actions">
+        <!--
+          ❌ BREAKING CHANGE: id changed from "add-user" → "new-user-btn"
+        -->
+        <button id="new-user-btn" class="btn-secondary" onclick="alert('Add User clicked!')">+ Add User</button>
+        <button class="btn-primary btn-secondary"
+                style="background:linear-gradient(135deg,#6c63ff,#8b5cf6);border:none;color:#fff;">
+          ▶ Run Tests
+        </button>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card"><div class="label">Tests Executed</div><div class="value">1,248</div></div>
+      <div class="stat-card"><div class="label">Healing Success</div><div class="value green">94.2%</div></div>
+      <div class="stat-card"><div class="label">Avg Confidence</div><div class="value blue">87.5</div></div>
+      <div class="stat-card"><div class="label">Auto-Healed</div><div class="value">312</div></div>
+    </div>
+
+    <div class="users-table">
+      <div class="table-header">
+        <h3>Recent Healing Events</h3>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Test</th><th>Original</th><th>Healed</th><th>Score</th><th>Decision</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>test_login_button</td><td>#login-btn</td><td>#btn-submit</td>
+              <td>91.2</td><td><span class="badge active">AUTO_HEAL</span></td></tr>
+          <tr><td>test_email_field</td><td>#email</td><td>#user-email</td>
+              <td>88.7</td><td><span class="badge active">AUTO_HEAL</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+  <p style="position:fixed;bottom:8px;right:12px;font-size:0.7rem;color:#7c7d8e;">
+    ⚠️ Broken v2.0: .btn-signout · #new-user-btn · aria-label="View Reports"
+  </p>
+</body>
+</html>

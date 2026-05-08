@@ -1,0 +1,73 @@
+{
+  "generated_at": "2026-05-08T10:03:18.435772+00:00",
+  "total_tests": 7,
+  "total_passed": 1,
+  "total_failed": 6,
+  "total_healing_events": 0,
+  "total_auto_healed": 0,
+  "tests": [
+    {
+      "test_name": "playwright-tests/test_dashboard.py::TestDashboardSelfHealing::test_logout_button_heals[chromium]",
+      "status": "FAILED",
+      "duration_ms": 8947.53,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:02:43.537847+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_dashboard.py::TestDashboardSelfHealing::test_add_user_button_heals[chromium]",
+      "status": "FAILED",
+      "duration_ms": 4397.49,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:02:52.545811+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_dashboard.py::TestDashboardSelfHealing::test_reports_link_heals[chromium]",
+      "status": "FAILED",
+      "duration_ms": 4684.02,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:02:56.992992+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_email_field_heals[chromium]",
+      "status": "FAILED",
+      "duration_ms": 4550.57,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:03:01.748138+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_password_field_heals[chromium]",
+      "status": "FAILED",
+      "duration_ms": 4620.02,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:03:06.391540+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+      "status": "FAILED",
+      "duration_ms": 4497.38,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:03:11.064777+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_no_healing_needed[chromium]",
+      "status": "PASSED",
+      "duration_ms": 2024.26,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:03:15.650089+00:00"
+    }
+  ]
+}

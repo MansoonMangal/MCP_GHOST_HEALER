@@ -1,0 +1,181 @@
+"""
+Similarity Engine — weighted multi-feature scoring model.
+
+Formula:
+  final_score = (text_sim × 0.35)
+              + (attr_sim  × 0.25)
+              + (dom_struct × 0.20)
+              + (semantic   × 0.10)
+              + (visibility × 0.10)
+
+Uses rapidfuzz for high-performance fuzzy string matching.
+"""
+from typing import Any, Dict, List, Tuple
+
+from rapidfuzz import fuzz
+
+from ai_engine.feature_extractor import build_locator_from_element
+from utils.logger import get_logger
+from config.settings import settings
+
+logger = get_logger("similarity_engine", settings.log_file, settings.log_level)
+
+
+# ── Individual similarity functions ───────────────────────────────────────────
+
+def _text_similarity(orig: Dict, cand: Dict) -> float:
+    """Compare visible text content using token sort ratio (handles word order)."""
+    orig_text = (orig.get("text") or "").strip().lower()
+    cand_text = (cand.get("text") or "").strip().lower()
+    if not orig_text and not cand_text:
+        return 50.0   # Both empty → neutral
+    if not orig_text or not cand_text:
+        return 10.0   # One empty → low score (not zero, preserves other features)
+    return fuzz.token_sort_ratio(orig_text, cand_text)
+
+
+def _attribute_similarity(orig: Dict, cand: Dict) -> float:
+    """
+    Compare element attributes using a weighted sub-score.
+    High-signal attributes (id, name, data-testid) carry more weight.
+    """
+    comparisons: List[Tuple[str, float]] = [
+        ("id", 2.0),
+        ("name", 1.5),
+        ("data_testid", 2.0),
+        ("aria_label", 1.5),
+        ("type", 1.0),
+        ("placeholder", 1.0),
+        ("class_str", 0.8),
+    ]
+    weighted_sum = 0.0
+    total_weight = 0.0
+
+    for attr, weight in comparisons:
+        orig_val = str(orig.get(attr) or "").strip().lower()
+        cand_val = str(cand.get(attr) or "").strip().lower()
+        if orig_val and cand_val:
+            score = fuzz.ratio(orig_val, cand_val)
+        elif not orig_val and not cand_val:
+            score = 80.0   # Both missing → slightly positive (not penalized)
+        else:
+            score = 0.0    # One present, one missing → penalize
+
+        weighted_sum += score * weight
+        total_weight += weight
+
+    return weighted_sum / total_weight if total_weight > 0 else 50.0
+
+
+def _dom_structure_similarity(orig: Dict, cand: Dict) -> float:
+    """Compare tag names and DOM path depth."""
+    orig_tag = (orig.get("tag_name") or "").lower()
+    cand_tag = (cand.get("tag_name") or "").lower()
+    tag_score = 100.0 if orig_tag == cand_tag else 20.0
+
+    orig_path = orig.get("dom_path") or orig.get("tag_name") or ""
+    cand_path = cand.get("dom_path") or cand.get("tag_name") or ""
+    path_score = fuzz.ratio(orig_path, cand_path) if orig_path and cand_path else 50.0
+
+    return (tag_score * 0.55) + (path_score * 0.45)
+
+
+def _semantic_role_similarity(orig: Dict, cand: Dict) -> float:
+    """Compare semantic roles (explicit role attr or inferred from tag)."""
+    def effective_role(f: Dict) -> str:
+        if f.get("role"):
+            return f["role"].lower()
+        tag = f.get("tag_name", "")
+        role_map = {
+            "button": "button", "a": "link", "input": "textbox",
+            "select": "listbox", "textarea": "textbox", "label": "label",
+        }
+        return role_map.get(tag, tag)
+
+    orig_role = effective_role(orig)
+    cand_role = effective_role(cand)
+    return 100.0 if orig_role == cand_role else fuzz.ratio(orig_role, cand_role)
+
+
+def _visibility_score(cand: Dict) -> float:
+    """Score based on whether the element is interactive and visible."""
+    if cand.get("is_interactive"):
+        return 100.0
+    return 40.0
+
+
+# ── Main scoring function ─────────────────────────────────────────────────────
+
+def compute_score(
+    original_features: Dict[str, Any],
+    candidate_features: Dict[str, Any],
+    weights: Dict[str, float],
+) -> Tuple[float, Dict[str, float]]:
+    """
+    Compute the weighted final score for a single candidate element.
+
+    Returns:
+        (final_score_0_to_100, score_breakdown_dict)
+    """
+    text_sim = _text_similarity(original_features, candidate_features)
+    attr_sim = _attribute_similarity(original_features, candidate_features)
+    dom_sim = _dom_structure_similarity(original_features, candidate_features)
+    semantic_sim = _semantic_role_similarity(original_features, candidate_features)
+    visibility = _visibility_score(candidate_features)
+
+    final = (
+        text_sim   * weights["text_similarity"]
+        + attr_sim * weights["attribute_similarity"]
+        + dom_sim  * weights["dom_structure"]
+        + semantic_sim * weights["semantic_role"]
+        + visibility   * weights["visibility"]
+    )
+
+    breakdown = {
+        "text_similarity": round(text_sim, 2),
+        "attribute_similarity": round(attr_sim, 2),
+        "dom_structure_similarity": round(dom_sim, 2),
+        "semantic_role_similarity": round(semantic_sim, 2),
+        "visibility_score": round(visibility, 2),
+        "final_score": round(final, 2),
+    }
+
+    return round(final, 2), breakdown
+
+
+def rank_candidates(
+    original_features: Dict[str, Any],
+    all_candidates: List[Dict[str, Any]],
+    weights: Dict[str, float],
+    top_n: int = 5,
+) -> List[Dict[str, Any]]:
+    """
+    Score all DOM candidates and return top_n ranked results.
+
+    Each result contains:
+      locator, score, score_breakdown, element metadata
+    """
+    logger.info(f"Ranking {len(all_candidates)} candidates against original features")
+    scored: List[Dict[str, Any]] = []
+
+    for candidate in all_candidates:
+        score, breakdown = compute_score(original_features, candidate, weights)
+        locator = build_locator_from_element(candidate)
+
+        scored.append({
+            "locator": locator,
+            "score": score,
+            "score_breakdown": breakdown,
+            "element_tag": candidate.get("tag_name", ""),
+            "element_text": candidate.get("text", "")[:100],
+            "element_attributes": {
+                k: candidate.get(k, "")
+                for k in ["id", "class_str", "name", "type", "aria_label", "data_testid"]
+            },
+            "_features": candidate,
+        })
+
+    ranked = sorted(scored, key=lambda x: x["score"], reverse=True)
+    top = ranked[:top_n]
+    logger.info(f"Top candidate: score={top[0]['score'] if top else 'N/A'}, locator={top[0]['locator'] if top else 'N/A'}")
+    return top

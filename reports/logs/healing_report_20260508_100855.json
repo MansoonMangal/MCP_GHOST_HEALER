@@ -1,0 +1,97 @@
+{
+  "generated_at": "2026-05-08T10:08:55.456635+00:00",
+  "total_tests": 7,
+  "total_passed": 3,
+  "total_failed": 4,
+  "total_healing_events": 2,
+  "total_auto_healed": 0,
+  "tests": [
+    {
+      "test_name": "playwright-tests/test_dashboard.py::TestDashboardSelfHealing::test_logout_button_heals[chromium]",
+      "status": "PASSED",
+      "duration_ms": 11153.6,
+      "healing_events": [
+        {
+          "test_name": "test_logout_button_heals",
+          "original_locator": ".logout-btn",
+          "healed_locator": "button.btn-signout.btn-danger",
+          "confidence_score": 66.7,
+          "confidence_level": "MEDIUM",
+          "decision": "MANUAL_REVIEW",
+          "was_healed": false,
+          "healing_id": "3397f3f4-1de8-4f1b-8dbf-2b1e35a3e3ea",
+          "timestamp": "2026-05-08T10:08:14.620152+00:00"
+        }
+      ],
+      "total_healed": 0,
+      "total_failed_heals": 1,
+      "started_at": "2026-05-08T10:08:03.467477+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_dashboard.py::TestDashboardSelfHealing::test_add_user_button_heals[chromium]",
+      "status": "PASSED",
+      "duration_ms": 6943.35,
+      "healing_events": [
+        {
+          "test_name": "test_add_user_button_heals",
+          "original_locator": "#add-user",
+          "healed_locator": "#new-user-btn",
+          "confidence_score": 60.93,
+          "confidence_level": "MEDIUM",
+          "decision": "MANUAL_REVIEW",
+          "was_healed": false,
+          "healing_id": "d38b2c1b-64f2-470d-844d-8d2e58c82bb8",
+          "timestamp": "2026-05-08T10:08:21.638805+00:00"
+        }
+      ],
+      "total_healed": 0,
+      "total_failed_heals": 1,
+      "started_at": "2026-05-08T10:08:14.696477+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_dashboard.py::TestDashboardSelfHealing::test_reports_link_heals[chromium]",
+      "status": "FAILED",
+      "duration_ms": 7265.5,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:08:21.727889+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_email_field_heals[chromium]",
+      "status": "FAILED",
+      "duration_ms": 7467.71,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:08:29.050954+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_password_field_heals[chromium]",
+      "status": "FAILED",
+      "duration_ms": 7403.1,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:08:36.580943+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+      "status": "FAILED",
+      "duration_ms": 7342.3,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:08:44.040217+00:00"
+    },
+    {
+      "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_no_healing_needed[chromium]",
+      "status": "PASSED",
+      "duration_ms": 1867.05,
+      "healing_events": [],
+      "total_healed": 0,
+      "total_failed_heals": 0,
+      "started_at": "2026-05-08T10:08:51.442793+00:00"
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+[
+  {
+    "healing_id": "6352e7b8-57ae-4dcd-bf3c-1fbdaed43cbc",
+    "score": 66.7,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_logout_button_heals",
+    "timestamp": "2026-05-08T10:06:11.547128+00:00"
+  },
+  {
+    "healing_id": "e9bf3864-0fca-4966-a9d7-9dda86fb2680",
+    "score": 60.93,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_add_user_button_heals",
+    "timestamp": "2026-05-08T10:06:19.620807+00:00"
+  },
+  {
+    "healing_id": "6885f7b7-24ac-4d09-a499-3f6a5486714d",
+    "score": 59.35,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_reports_link_heals",
+    "timestamp": "2026-05-08T10:06:26.755295+00:00"
+  },
+  {
+    "healing_id": "55d0cdd6-f973-439b-b23f-3a58c6fdb5f3",
+    "score": 47.38,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_login_email_field_heals",
+    "timestamp": "2026-05-08T10:06:34.037827+00:00"
+  },
+  {
+    "healing_id": "42eb62a9-3402-40a1-a856-abc78f5afcae",
+    "score": 47.99,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_login_password_field_heals",
+    "timestamp": "2026-05-08T10:06:41.271562+00:00"
+  },
+  {
+    "healing_id": "bd959ccf-8fc6-4796-9900-c64604625ec4",
+    "score": 47.38,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T10:06:48.598434+00:00"
+  },
+  {
+    "healing_id": "3397f3f4-1de8-4f1b-8dbf-2b1e35a3e3ea",
+    "score": 66.7,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_logout_button_heals",
+    "timestamp": "2026-05-08T10:08:14.481825+00:00"
+  },
+  {
+    "healing_id": "d38b2c1b-64f2-470d-844d-8d2e58c82bb8",
+    "score": 60.93,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_add_user_button_heals",
+    "timestamp": "2026-05-08T10:08:21.534880+00:00"
+  },
+  {
+    "healing_id": "1cd2789b-808d-483a-90b0-eee9457a0907",
+    "score": 59.35,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_reports_link_heals",
+    "timestamp": "2026-05-08T10:08:28.955655+00:00"
+  },
+  {
+    "healing_id": "3c57d963-540f-4f33-8f97-f87292ace8f6",
+    "score": 47.38,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_login_email_field_heals",
+    "timestamp": "2026-05-08T10:08:36.479247+00:00"
+  },
+  {
+    "healing_id": "06d6c02d-42b8-4e3f-b997-1f6451acdfab",
+    "score": 47.99,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_login_password_field_heals",
+    "timestamp": "2026-05-08T10:08:43.950970+00:00"
+  },
+  {
+    "healing_id": "942fc68d-a5c3-4876-b4d8-d17d2490bfd6",
+    "score": 47.38,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T10:08:51.342619+00:00"
+  }
+]

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HealQA Platform — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="icon">🛡️</div>
+        <h1>HealQA</h1>
+      </div>
+      <h2>Welcome back</h2>
+      <p class="subtitle">Sign in to your QA automation platform</p>
+
+      <form id="login-form" onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <!-- WORKING VERSION: id="email" -->
+          <input id="email" name="email" type="email" placeholder="Enter your email" required />
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <!-- WORKING VERSION: id="password" -->
+          <input id="password" name="password" type="password" placeholder="Enter your password" required />
+        </div>
+        <!-- WORKING VERSION: id="login-btn" -->
+        <button id="login-btn" type="submit" class="btn-primary">Login</button>
+      </form>
+
+      <p class="version-badge">✅ Working Version — Locators: #email · #password · #login-btn</p>
+    </div>
+  </div>
+
+  <script>
+    function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      if (email && password) {
+        window.location.href = 'dashboard.html';
+      }
+    }
+  </script>
+</body>
+</html>
