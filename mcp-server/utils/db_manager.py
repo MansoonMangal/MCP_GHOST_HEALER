@@ -4,7 +4,6 @@ Acts as a lightweight persistence layer for healing records.
 """
 import json
 import uuid
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -92,14 +91,6 @@ def get_all_healing_records() -> List[Dict]:
     """Return all healing records sorted newest-first."""
     records = _read_json(HEALED_LOCATORS_FILE)
     return sorted(records, key=lambda r: r.get("timestamp", ""), reverse=True)
-
-
-def get_all_failure_logs() -> List[Dict]:
-    return _read_json(FAILURE_LOGS_FILE)
-
-
-def get_all_confidence_scores() -> List[Dict]:
-    return _read_json(CONFIDENCE_SCORES_FILE)
 
 
 def get_healing_record_by_id(healing_id: str) -> Optional[Dict]:

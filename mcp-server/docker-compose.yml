@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  ghost-brain:
+    build: ./mcp-server
+    container_name: ghost-healer-brain
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URI=${MONGO_URI:-mongodb://localhost:27017/ghost_healer}
+    restart: always
+
+  # Optional MongoDB service for local persistent storage
+  mongodb:
+    image: mongo:latest
+    container_name: ghost-healer-db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

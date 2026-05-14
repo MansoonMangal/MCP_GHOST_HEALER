@@ -3,7 +3,7 @@ Feature Extractor — pulls structured feature vectors from DOM elements
 and from the original failing selector string.
 """
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict
 from bs4 import Tag
 
 
@@ -15,9 +15,12 @@ INTERACTIVE_TAGS = {"button", "a", "input", "select", "textarea", "label", "summ
 
 def extract_features_from_selector(selector: str) -> Dict[str, Any]:
     """
-    Reverse-engineer a CSS/XPath/Playwright selector into a feature dict.
-    This allows comparison against live DOM elements even when the original
-    element no longer exists.
+    Reverse-engineer a broken selector string (like '#login-btn' or '//button') 
+    back into its core features (tag=button, id=login-btn).
+    
+    Why? Because the original element is missing from the page! 
+    We use Regular Expressions (Regex) to guess what the element *used to* look like
+    so the AI knows what to search for.
     """
     features: Dict[str, Any] = {
         "tag_name": "",
@@ -94,6 +97,19 @@ def extract_features_from_selector(selector: str) -> Dict[str, Any]:
             features["role"] = attr_value
 
     features["is_interactive"] = features["tag_name"] in INTERACTIVE_TAGS
+    
+    # Smart Inference: If tag is missing, guess from ID/Path keywords
+    if not features["tag_name"]:
+        path_lower = features["dom_path"].lower()
+        if any(k in path_lower for k in ["btn", "submit", "button"]):
+            features["tag_name"] = "button"
+            features["role"] = "button"
+            features["is_interactive"] = True
+        elif any(k in path_lower for k in ["email", "pass", "input", "text"]):
+            features["tag_name"] = "input"
+            features["role"] = "textbox"
+            features["is_interactive"] = True
+            
     return features
 
 

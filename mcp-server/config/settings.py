@@ -8,14 +8,14 @@ class Settings:
     debug: bool = os.getenv("MCP_DEBUG", "true").lower() == "true"
 
     # ── Confidence Thresholds ────────────────────────────────────────────
-    auto_heal_threshold: float = float(os.getenv("AUTO_HEAL_THRESHOLD", 85.0))
-    manual_review_threshold: float = float(os.getenv("MANUAL_REVIEW_THRESHOLD", 60.0))
+    auto_heal_threshold: float = float(os.getenv("AUTO_HEAL_THRESHOLD", 50.0))
+    manual_review_threshold: float = float(os.getenv("MANUAL_REVIEW_THRESHOLD", 30.0))
 
     # ── Similarity Weights (must sum to 1.0) ────────────────────────────
     weight_text_similarity: float = float(os.getenv("WEIGHT_TEXT_SIMILARITY", 0.35))
-    weight_attribute_similarity: float = float(os.getenv("WEIGHT_ATTRIBUTE_SIMILARITY", 0.25))
+    weight_attribute_similarity: float = float(os.getenv("WEIGHT_ATTRIBUTE_SIMILARITY", 0.10))
     weight_dom_structure: float = float(os.getenv("WEIGHT_DOM_STRUCTURE", 0.20))
-    weight_semantic_role: float = float(os.getenv("WEIGHT_SEMANTIC_ROLE", 0.10))
+    weight_semantic_role: float = float(os.getenv("WEIGHT_SEMANTIC_ROLE", 0.25))
     weight_visibility: float = float(os.getenv("WEIGHT_VISIBILITY", 0.10))
 
     # ── Logging ──────────────────────────────────────────────────────────

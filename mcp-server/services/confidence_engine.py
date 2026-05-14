@@ -6,7 +6,7 @@ Scoring rules:
   score 60–84  → MEDIUM → MANUAL_REVIEW
   score < 60   → LOW   → FAIL
 """
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from config.settings import settings
 from utils.logger import get_logger

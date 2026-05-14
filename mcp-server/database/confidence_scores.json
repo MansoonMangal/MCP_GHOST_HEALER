@@ -94,5 +94,741 @@
     "decision": "FAIL",
     "test_name": "test_login_button_heals",
     "timestamp": "2026-05-08T10:08:51.342619+00:00"
+  },
+  {
+    "healing_id": "68d4b049-14b7-446e-a7a9-03ec0333fc53",
+    "score": 66.7,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_logout_button_heals",
+    "timestamp": "2026-05-08T10:12:02.926945+00:00"
+  },
+  {
+    "healing_id": "2846bb9e-e6ce-4038-8a1f-a0afae79171f",
+    "score": 60.93,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_add_user_button_heals",
+    "timestamp": "2026-05-08T10:12:10.465420+00:00"
+  },
+  {
+    "healing_id": "2d6ac9e7-e373-4580-a80a-74833f0ddd8c",
+    "score": 59.35,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_reports_link_heals",
+    "timestamp": "2026-05-08T10:12:17.485252+00:00"
+  },
+  {
+    "healing_id": "c3c06df8-d690-48d6-a7b8-0b02a34e4559",
+    "score": 47.38,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_login_email_field_heals",
+    "timestamp": "2026-05-08T10:12:24.609351+00:00"
+  },
+  {
+    "healing_id": "1b814e83-5e94-47b7-a80f-e8a762e7557b",
+    "score": 47.99,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_login_password_field_heals",
+    "timestamp": "2026-05-08T10:12:31.807504+00:00"
+  },
+  {
+    "healing_id": "85d73a5c-ce4e-4331-91e4-e557ce1dc972",
+    "score": 47.38,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T10:12:38.952871+00:00"
+  },
+  {
+    "healing_id": "f6e12a4d-66f3-42a2-9269-4d0764b415b0",
+    "score": 92.13,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_logout_button_heals",
+    "timestamp": "2026-05-08T10:14:00.017095+00:00"
+  },
+  {
+    "healing_id": "fb90953d-04d6-44f0-bd1d-b90aa7ff15dd",
+    "score": 85.34,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_add_user_button_heals",
+    "timestamp": "2026-05-08T10:14:07.437476+00:00"
+  },
+  {
+    "healing_id": "159d517f-250f-4708-9610-26c5f8596858",
+    "score": 87.84,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_reports_link_heals",
+    "timestamp": "2026-05-08T10:14:14.934070+00:00"
+  },
+  {
+    "healing_id": "f3fb11d6-ab39-400f-9292-b06900283af1",
+    "score": 72.21,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_email_field_heals",
+    "timestamp": "2026-05-08T10:14:22.240978+00:00"
+  },
+  {
+    "healing_id": "ad8a9bb8-e2ce-4fb8-a25c-55bc7f85aced",
+    "score": 72.81,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_password_field_heals",
+    "timestamp": "2026-05-08T10:14:29.463121+00:00"
+  },
+  {
+    "healing_id": "b48d8baa-5975-4200-9cbc-800fe13e1ec7",
+    "score": 72.21,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T10:14:36.449836+00:00"
+  },
+  {
+    "healing_id": "6f418ec3-3ac3-4a98-ba55-0a27ced34927",
+    "score": 72.81,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T10:14:42.386071+00:00"
+  },
+  {
+    "healing_id": "bfa99d93-09d6-4345-8def-0f3a14352461",
+    "score": 89.08,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T10:14:48.062365+00:00"
+  },
+  {
+    "healing_id": "060c2b54-c29a-4439-989c-951647b85509",
+    "score": 92.13,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_logout_button_heals",
+    "timestamp": "2026-05-08T11:17:16.731798+00:00"
+  },
+  {
+    "healing_id": "053ab1fc-1935-440d-ad32-519be8bbe56e",
+    "score": 85.34,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_add_user_button_heals",
+    "timestamp": "2026-05-08T11:17:23.049933+00:00"
+  },
+  {
+    "healing_id": "db335037-8d3d-4ba4-aecc-3c45b83fed79",
+    "score": 87.84,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_reports_link_heals",
+    "timestamp": "2026-05-08T11:17:29.201878+00:00"
+  },
+  {
+    "healing_id": "c2f1039d-34c3-475f-ae91-3d1a2e0ec09a",
+    "score": 72.21,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_email_field_heals",
+    "timestamp": "2026-05-08T11:17:35.463670+00:00"
+  },
+  {
+    "healing_id": "f1731288-a9b8-401d-8271-2d750791ac28",
+    "score": 72.81,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_password_field_heals",
+    "timestamp": "2026-05-08T11:17:41.659751+00:00"
+  },
+  {
+    "healing_id": "d1feb5d3-f7b1-497f-b3ce-86485341c552",
+    "score": 72.21,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T11:17:47.875484+00:00"
+  },
+  {
+    "healing_id": "2edabf38-89d1-438e-b63d-d6e5911e3998",
+    "score": 72.81,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T11:17:53.388064+00:00"
+  },
+  {
+    "healing_id": "5e5f1485-4b89-4c2d-98c9-47056791b7a5",
+    "score": 89.08,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T11:17:58.855468+00:00"
+  },
+  {
+    "healing_id": "0a32e1d4-3557-41a7-b61c-b1e50f937cfe",
+    "score": 92.13,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_logout_button_heals",
+    "timestamp": "2026-05-08T21:43:22.815240+00:00"
+  },
+  {
+    "healing_id": "145fa8c7-dea5-4835-a4ba-f3edeb108193",
+    "score": 85.34,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_add_user_button_heals",
+    "timestamp": "2026-05-08T21:43:30.155163+00:00"
+  },
+  {
+    "healing_id": "458d4d32-891f-4fb6-984d-1671cc1dd933",
+    "score": 87.84,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_reports_link_heals",
+    "timestamp": "2026-05-08T21:43:37.429905+00:00"
+  },
+  {
+    "healing_id": "6c31d2ab-0d95-4a07-9e30-8230594d0ad3",
+    "score": 72.21,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_email_field_heals",
+    "timestamp": "2026-05-08T21:43:45.135747+00:00"
+  },
+  {
+    "healing_id": "16ade12b-25b1-4bd3-bac1-819bfccf960c",
+    "score": 72.81,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_password_field_heals",
+    "timestamp": "2026-05-08T21:43:52.463666+00:00"
+  },
+  {
+    "healing_id": "d2a2370b-d296-436a-b99f-3cdf7761ba3e",
+    "score": 72.21,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T21:43:59.525593+00:00"
+  },
+  {
+    "healing_id": "d5f277c1-a996-446e-92c2-f5348590f48e",
+    "score": 72.81,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T21:44:05.176785+00:00"
+  },
+  {
+    "healing_id": "3c5cd210-4e38-4f00-b857-d5975241cb16",
+    "score": 89.08,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "test_login_button_heals",
+    "timestamp": "2026-05-08T21:44:10.750914+00:00"
+  },
+  {
+    "healing_id": "2a1efac8-8882-4fc1-bd84-e48abcdaaabc",
+    "score": 72.21,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_email_field_heals[chromium]",
+    "timestamp": "2026-05-13T08:52:19.227637+00:00"
+  },
+  {
+    "healing_id": "4214016c-b57c-45fc-95ee-2d2771675f51",
+    "score": 72.16,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_password_field_heals[chromium]",
+    "timestamp": "2026-05-13T08:52:25.887128+00:00"
+  },
+  {
+    "healing_id": "3f87feb7-97c9-4d1f-9290-543c66c560dd",
+    "score": 72.21,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T08:52:32.513885+00:00"
+  },
+  {
+    "healing_id": "9bf8973c-ba2d-4324-bf4f-e7918eb5b757",
+    "score": 72.81,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T08:52:38.613009+00:00"
+  },
+  {
+    "healing_id": "07630e51-be05-4334-96a9-f0244b73f0df",
+    "score": 69.72,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T08:52:44.614923+00:00"
+  },
+  {
+    "healing_id": "d052ca38-ab0f-49a7-9098-be413816283c",
+    "score": 73.23,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T09:01:11.746013+00:00"
+  },
+  {
+    "healing_id": "a2ed2bef-c47f-49f9-b246-1a848af6154f",
+    "score": 73.54,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T09:01:17.710282+00:00"
+  },
+  {
+    "healing_id": "6d0f5887-c91b-45d2-9097-9bbcb0b15797",
+    "score": 66.46,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T09:01:23.734724+00:00"
+  },
+  {
+    "healing_id": "849fbc8d-4905-40f2-8006-4c5094225126",
+    "score": 73.23,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_email_field_heals[chromium]",
+    "timestamp": "2026-05-13T10:43:54.983637+00:00"
+  },
+  {
+    "healing_id": "dded7c5b-eded-4fb3-aa35-fecbaf5449f1",
+    "score": 73.29,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_password_field_heals[chromium]",
+    "timestamp": "2026-05-13T10:44:00.962060+00:00"
+  },
+  {
+    "healing_id": "4a0fd933-c6f0-4222-bfc9-438bbc99a13c",
+    "score": 73.23,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:44:06.986905+00:00"
+  },
+  {
+    "healing_id": "e562bbbc-92bb-4219-9656-8ffb2ecf6e35",
+    "score": 73.54,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:44:12.537704+00:00"
+  },
+  {
+    "healing_id": "07f7e8f5-beb9-4061-a27f-abc00baf9745",
+    "score": 59.35,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:44:17.982992+00:00"
+  },
+  {
+    "healing_id": "bae99965-3ffa-4c08-b635-395c7d3ec02b",
+    "score": 73.23,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_email_field_heals[chromium]",
+    "timestamp": "2026-05-13T10:45:29.047138+00:00"
+  },
+  {
+    "healing_id": "3109bec9-6598-4427-aa53-0df1b0b76512",
+    "score": 73.29,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_password_field_heals[chromium]",
+    "timestamp": "2026-05-13T10:45:36.076278+00:00"
+  },
+  {
+    "healing_id": "d5bddc0c-fbe2-4322-bdd5-78279bc2e669",
+    "score": 73.23,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:45:43.251089+00:00"
+  },
+  {
+    "healing_id": "ede4ce04-eb5c-43be-93b8-2a2b7bd57e4a",
+    "score": 73.54,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:45:49.585893+00:00"
+  },
+  {
+    "healing_id": "2588e16a-d872-41c9-8a13-c40d7a3e733b",
+    "score": 59.35,
+    "level": "LOW",
+    "decision": "FAIL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:45:56.021047+00:00"
+  },
+  {
+    "healing_id": "6a19f797-426f-4c7b-9314-72d2d936c14c",
+    "score": 73.23,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_email_field_heals[chromium]",
+    "timestamp": "2026-05-13T10:46:43.663271+00:00"
+  },
+  {
+    "healing_id": "102dc8cc-2771-44fc-a77f-b9ab2107bfe9",
+    "score": 73.29,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_password_field_heals[chromium]",
+    "timestamp": "2026-05-13T10:46:50.729123+00:00"
+  },
+  {
+    "healing_id": "2d79c310-0d71-494e-add0-a23b4d54a4af",
+    "score": 73.23,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:46:57.612329+00:00"
+  },
+  {
+    "healing_id": "af8fcc94-5932-4f29-96bb-790acd606e72",
+    "score": 73.54,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:47:03.719841+00:00"
+  },
+  {
+    "healing_id": "51f05731-1a15-4631-9310-6b5ecabf13ed",
+    "score": 59.35,
+    "level": "MEDIUM",
+    "decision": "MANUAL_REVIEW",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:47:09.667268+00:00"
+  },
+  {
+    "healing_id": "333f47a9-b4bf-44ba-9d71-941d7f3e8e43",
+    "score": 73.23,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_email_field_heals[chromium]",
+    "timestamp": "2026-05-13T10:54:26.168248+00:00"
+  },
+  {
+    "healing_id": "6a993da9-6664-4075-a555-1eb5e273c2bb",
+    "score": 73.29,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_password_field_heals[chromium]",
+    "timestamp": "2026-05-13T10:54:33.235911+00:00"
+  },
+  {
+    "healing_id": "e02413fb-a9ea-446d-9b01-6de3eedd9c10",
+    "score": 73.23,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:54:40.229568+00:00"
+  },
+  {
+    "healing_id": "bacf595a-f127-449a-a548-4cf30a992b17",
+    "score": 73.54,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:54:46.401911+00:00"
+  },
+  {
+    "healing_id": "9b13921f-7da3-4f92-bcfc-843e1acb4310",
+    "score": 59.35,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T10:54:52.677293+00:00"
+  },
+  {
+    "healing_id": "e366c7ef-2935-4c18-afb3-0dba12075b09",
+    "score": 73.23,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_email_field_heals[chromium]",
+    "timestamp": "2026-05-13T11:12:33.656917+00:00"
+  },
+  {
+    "healing_id": "0206a25a-65ff-41ab-9580-484d836cf9f5",
+    "score": 73.29,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_password_field_heals[chromium]",
+    "timestamp": "2026-05-13T11:12:40.493157+00:00"
+  },
+  {
+    "healing_id": "81b31e33-47a2-4458-82ef-0887c053470d",
+    "score": 73.23,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T11:12:47.121989+00:00"
+  },
+  {
+    "healing_id": "e6dbeaeb-9a2a-4c4a-8afa-0362a5bfc7db",
+    "score": 73.54,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T11:12:53.006553+00:00"
+  },
+  {
+    "healing_id": "4ead44f2-04aa-4e9f-991f-b046ddbc96c0",
+    "score": 59.35,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T11:12:58.952657+00:00"
+  },
+  {
+    "healing_id": "ff0ce53c-0114-47ba-b070-4d26c96b18ef",
+    "score": 73.23,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_email_field_heals[chromium]",
+    "timestamp": "2026-05-13T11:22:21.181146+00:00"
+  },
+  {
+    "healing_id": "d5259a16-5612-43b2-8470-1c23a47a1493",
+    "score": 73.29,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_password_field_heals[chromium]",
+    "timestamp": "2026-05-13T11:22:28.471359+00:00"
+  },
+  {
+    "healing_id": "1d833033-d782-451a-a67a-6b33b75ff651",
+    "score": 73.23,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T11:22:35.974803+00:00"
+  },
+  {
+    "healing_id": "18794537-d4d8-4ed6-b50a-c6f2c2dbaa49",
+    "score": 73.54,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T11:22:42.185063+00:00"
+  },
+  {
+    "healing_id": "20c2a70a-cacf-48b6-a530-616bcd9931ff",
+    "score": 59.35,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T11:22:48.516859+00:00"
+  },
+  {
+    "healing_id": "d2fd6167-056e-4a75-b18b-0131c622833a",
+    "score": 73.23,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T11:35:33.408298+00:00"
+  },
+  {
+    "healing_id": "709886ef-9251-4cc5-93b4-681a38655074",
+    "score": 73.54,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T11:35:39.912565+00:00"
+  },
+  {
+    "healing_id": "0193c3ff-ed88-4881-ba50-ded3de137e37",
+    "score": 90.85,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-13T11:35:46.139870+00:00"
+  },
+  {
+    "healing_id": "3cf3da45-b233-4bc0-827d-f62002721fed",
+    "score": 72.16,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-14T07:25:11.843824+00:00"
+  },
+  {
+    "healing_id": "4c3b15a7-cdd8-4b62-a760-6788d6b11a41",
+    "score": 72.83,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-14T07:25:17.952186+00:00"
+  },
+  {
+    "healing_id": "d6472acc-53eb-4a5b-922c-40ca55aae831",
+    "score": 59.35,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-14T07:25:24.117097+00:00"
+  },
+  {
+    "healing_id": "fdd9420e-9eea-4d7e-98f6-66139e54ef19",
+    "score": 72.16,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-14T07:31:55.693521+00:00"
+  },
+  {
+    "healing_id": "7aa2c7be-886c-41b8-83f6-706c71adbff5",
+    "score": 72.83,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-14T07:32:01.299621+00:00"
+  },
+  {
+    "healing_id": "7112f080-7e9b-4f82-934d-1334ade77905",
+    "score": 59.35,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-14T07:32:06.968211+00:00"
+  },
+  {
+    "healing_id": "4d9517a7-6984-4043-aafb-e12146993363",
+    "score": 59.35,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginSelfHealing::test_login_button_heals[chromium]",
+    "timestamp": "2026-05-14T07:33:00.712554+00:00"
+  },
+  {
+    "healing_id": "906fcd34-840a-43a4-b4fe-b9ae64c5016f",
+    "score": 73.23,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginGhostMode::test_native_login_heals_automatically[chromium]",
+    "timestamp": "2026-05-14T09:07:48.251857+00:00"
+  },
+  {
+    "healing_id": "bfc7fc14-06d2-41b5-b42e-4e44933a516e",
+    "score": 73.54,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginGhostMode::test_native_login_heals_automatically[chromium]",
+    "timestamp": "2026-05-14T09:08:24.095145+00:00"
+  },
+  {
+    "healing_id": "0c1e0507-5192-4454-b92e-907ae515930b",
+    "score": 59.35,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "playwright-tests/test_login.py::TestLoginGhostMode::test_native_login_heals_automatically[chromium]",
+    "timestamp": "2026-05-14T09:09:00.063197+00:00"
+  },
+  {
+    "healing_id": "8e729409-6081-4f44-82d5-c09baca33706",
+    "score": 72.0,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "Universal_Ghost_Run",
+    "timestamp": "2026-05-14T10:27:02.056983+00:00"
+  },
+  {
+    "healing_id": "26110ef7-ee01-42c6-bff4-2de2d0b33e7d",
+    "score": 72.68,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "Universal_Ghost_Run",
+    "timestamp": "2026-05-14T10:27:36.732613+00:00"
+  },
+  {
+    "healing_id": "c8e28afe-ad7d-4a06-9ed6-c6d34ca7db78",
+    "score": 73.78,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "Universal_Ghost_Run",
+    "timestamp": "2026-05-14T10:49:17.081799+00:00"
+  },
+  {
+    "healing_id": "4ddaa9cf-f28b-4ec8-8ae1-2f570b8cf881",
+    "score": 73.78,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "Universal_Ghost_Run",
+    "timestamp": "2026-05-14T10:49:19.717995+00:00"
+  },
+  {
+    "healing_id": "69b1223e-6160-43d6-9a71-958695840b7a",
+    "score": 59.35,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "Universal_Ghost_Run",
+    "timestamp": "2026-05-14T10:49:54.267616+00:00"
+  },
+  {
+    "healing_id": "9d413ea4-a249-4c59-b6c9-138bb16a87b6",
+    "score": 73.09,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "Universal_Ghost_Run",
+    "timestamp": "2026-05-14T18:42:51.320582+00:00"
+  },
+  {
+    "healing_id": "1fdcc82b-440a-4771-ae36-a16aeb772381",
+    "score": 72.73,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "Universal_Ghost_Run",
+    "timestamp": "2026-05-14T18:42:56.337276+00:00"
+  },
+  {
+    "healing_id": "5856a3f6-eeb8-4e84-a847-1a7a7e6d4c80",
+    "score": 60.1,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "Universal_Ghost_Run",
+    "timestamp": "2026-05-14T18:43:01.781742+00:00"
+  },
+  {
+    "healing_id": "c60c49f3-e810-45cd-afee-9528756116de",
+    "score": 72.85,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "Ghost_Mode_TS_SourceHeal",
+    "timestamp": "2026-05-14T18:44:17.118218+00:00"
+  },
+  {
+    "healing_id": "cdb9a099-4b9f-4019-9055-7506b31c01ce",
+    "score": 72.33,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "Ghost_Mode_TS_SourceHeal",
+    "timestamp": "2026-05-14T18:44:17.458442+00:00"
+  },
+  {
+    "healing_id": "577e6267-9511-486b-911f-dcec812fff03",
+    "score": 60.1,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": "Ghost_Mode_TS_SourceHeal",
+    "timestamp": "2026-05-14T18:44:17.715176+00:00"
   }
 ]

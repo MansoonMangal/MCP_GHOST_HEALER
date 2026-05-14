@@ -37,7 +37,7 @@ def _text_similarity(orig: Dict, cand: Dict) -> float:
 def _attribute_similarity(orig: Dict, cand: Dict) -> float:
     """
     Compare element attributes using a weighted sub-score.
-    High-signal attributes (id, name, data-testid) carry more weight.
+    High-signal attributes (like `id` or `data-testid`) are worth more points than generic ones (like `class`).
     """
     comparisons: List[Tuple[str, float]] = [
         ("id", 2.0),
@@ -54,13 +54,18 @@ def _attribute_similarity(orig: Dict, cand: Dict) -> float:
     for attr, weight in comparisons:
         orig_val = str(orig.get(attr) or "").strip().lower()
         cand_val = str(cand.get(attr) or "").strip().lower()
+        # If the original selector required an attribute, we check how closely it matches the candidate's.
+        # fuzz.ratio("email", "user-email") returns a percentage score based on text similarity.
         if orig_val and cand_val:
             score = fuzz.ratio(orig_val, cand_val)
+        elif not orig_val and cand_val:
+            score = 100.0  # Original didn't specify, candidate has it -> ignore/don't penalize
         elif not orig_val and not cand_val:
-            score = 80.0   # Both missing → slightly positive (not penalized)
+            score = 100.0  # Both missing -> matches constraint
         else:
-            score = 0.0    # One present, one missing → penalize
+            score = 0.0    # Original required it, candidate missing it -> penalize
 
+        # Multiply the score by how important this attribute is (its weight)
         weighted_sum += score * weight
         total_weight += weight
 
@@ -71,7 +76,10 @@ def _dom_structure_similarity(orig: Dict, cand: Dict) -> float:
     """Compare tag names and DOM path depth."""
     orig_tag = (orig.get("tag_name") or "").lower()
     cand_tag = (cand.get("tag_name") or "").lower()
-    tag_score = 100.0 if orig_tag == cand_tag else 20.0
+    if not orig_tag:
+        tag_score = 100.0  # Not specified in original selector -> ignore
+    else:
+        tag_score = 100.0 if orig_tag == cand_tag else 20.0
 
     orig_path = orig.get("dom_path") or orig.get("tag_name") or ""
     cand_path = cand.get("dom_path") or cand.get("tag_name") or ""
@@ -82,6 +90,9 @@ def _dom_structure_similarity(orig: Dict, cand: Dict) -> float:
 
 def _semantic_role_similarity(orig: Dict, cand: Dict) -> float:
     """Compare semantic roles (explicit role attr or inferred from tag)."""
+    if not orig.get("role") and not orig.get("tag_name"):
+        return 100.0  # Not specified in original selector -> ignore
+
     def effective_role(f: Dict) -> str:
         if f.get("role"):
             return f["role"].lower()
@@ -130,6 +141,13 @@ def compute_score(
         + semantic_sim * weights["semantic_role"]
         + visibility   * weights["visibility"]
     )
+
+    # ── Strong Penalty: Action Mismatch ──────────────────────────────────
+    # If the element type doesn't match the action (e.g. clicking an input),
+    # we apply a massive penalty to ensure it's not picked over a valid type.
+    if candidate_features.get("action_mismatch"):
+        final -= 50.0
+
 
     breakdown = {
         "text_similarity": round(text_sim, 2),

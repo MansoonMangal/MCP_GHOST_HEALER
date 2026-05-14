@@ -51,9 +51,21 @@ def _get_siblings_context(element: Tag, max_siblings: int = 2) -> str:
     return " | ".join(siblings_text)
 
 
+# Elements suited for click-type actions
+CLICK_TAGS = {"button", "a", "summary"}
+# Elements suited for fill-type actions  
+FILL_TAGS = {"input", "textarea", "select"}
+# Tag-to-role penalty map for mismatched actions
+ACTION_TAG_MAP = {
+    "click": CLICK_TAGS,
+    "fill": FILL_TAGS,
+}
+
+
 def analyze_dom(
     html_snapshot: str,
     element_hints: Optional[Dict[str, Any]] = None,
+    action: str = "click",
 ) -> Tuple[List[Dict[str, Any]], int]:
     """
     Parse HTML and extract candidate elements for healing.
@@ -61,11 +73,17 @@ def analyze_dom(
     Args:
         html_snapshot:  Full page HTML string
         element_hints:  Optional known features to boost relevance filtering
+        action:         The Playwright action (click, fill). Used to pre-filter
+                        candidates to the correct element type.
 
     Returns:
         (candidates_list, total_elements_scanned)
     """
-    logger.info("Parsing DOM snapshot for candidate extraction")
+    logger.info(f"Analyzing HTML snapshot (length: {len(html_snapshot)})")
+    if len(html_snapshot) < 500:
+        logger.debug(f"Snapshot Content: {html_snapshot}")
+    else:
+        logger.debug(f"Snapshot Start: {html_snapshot[:500]}")
 
     try:
         soup = BeautifulSoup(html_snapshot, "lxml")
@@ -99,6 +117,17 @@ def analyze_dom(
                 and not features["id"]
                 and not features["aria_label"]):
             continue
+
+        # ── Action-type filtering: penalize wrong element type ────────────
+        # e.g. if we're looking for a clickable button, heavily deprioritize
+        # input/textarea elements by marking them as non-interactive.
+        preferred_tags = ACTION_TAG_MAP.get(action)
+        if preferred_tags and element.name not in preferred_tags:
+            # Allow inputs with role=button to still be considered for clicks
+            role = features.get("role", "")
+            if not (action == "click" and role in ("button", "link")):
+                features["action_mismatch"] = True
+                features["is_interactive"] = False  # Deprioritize in scoring
 
         candidates.append(features)
 

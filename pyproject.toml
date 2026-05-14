@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ghost-healer"
+version = "1.0.0"
+description = "Universal AI Self-Healing Framework for Enterprise Automation"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [{name = "Mansoon Mangal"}]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Testing"
+]
+dependencies = [
+    "playwright>=1.39.0",
+    "pytest>=7.4.0",
+    "requests>=2.31.0",
+    "httpx>=0.25.0",
+    "pyyaml>=6.0.1",
+    "click>=8.1.7",
+    "rich>=13.7.0",
+    "pydantic>=2.5.0",
+    "sqlite3-api>=0.1.0"
+]
+
+[project.scripts]
+ghost-healer = "ghost_healer.cli.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["ghost_healer*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: ghost-healer-brain
+    env: docker
+    dockerContext: ./mcp-server
+    dockerfile: Dockerfile
+    plan: free
+    region: ohio
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: MONGO_URI
+        fromDatabase:
+          name: ghost-db
+          property: connectionString
+    healthCheckPath: /health
+
+databases:
+  - name: ghost-db
+    plan: free
+    region: ohio

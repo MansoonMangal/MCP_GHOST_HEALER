@@ -6,7 +6,7 @@ Locator Validator — verifies that a proposed healed locator is:
 
 Runs on the HTML snapshot (no live browser), so validation is structural.
 """
-from typing import Any, Dict, Optional, Tuple
+from typing import Tuple
 
 from bs4 import BeautifulSoup
 

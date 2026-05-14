@@ -1,0 +1,12 @@
+healing:
+  auto_patch: true
+  cache_enabled: true
+  mode: runtime
+mcp_server:
+  confidence_threshold: 0.5
+  timeout: 30
+  url: http://localhost:8000
+reporting:
+  format: json
+  output_dir: reports/ghost
+  save_traces: true

@@ -19,6 +19,8 @@ from utils.db_manager import (
 )
 from utils.logger import get_logger
 from config.settings import settings
+from utils.stack_parser import stack_parser
+from utils.universal_healer import source_healer
 
 logger = get_logger("routes", settings.log_file, settings.log_level)
 routes_bp = Blueprint('routes', __name__)
@@ -40,6 +42,21 @@ def heal_locator():
             test_name=data.get('test_name'),
             element_hints=data.get('element_hints'),
         )
+        
+        # 🛡️ AUTOMATIC SOURCE HEALING (GHOST MODE)
+        stack_trace = data.get('stack_trace')
+        if stack_trace and result.get('decision') == 'AUTO_HEAL':
+            file_name, line_num = stack_parser.parse(stack_trace)
+            if file_name and line_num:
+                # If it's a Java file, we might need to find the absolute path
+                # For this demo, we assume the file is in the workspace
+                source_healer.apply_fix(
+                    file_path=file_name,
+                    line_number=line_num,
+                    old_locator=data.get('original_locator'),
+                    new_locator=result.get('healed_locator')
+                )
+
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error in heal_locator: {e}", exc_info=True)

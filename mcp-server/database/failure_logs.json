@@ -1,1 +1,29 @@
-[]
+[
+  {
+    "healing_id": "49261db2-f9b1-474e-a5fe-1d101f816903",
+    "original_locator": "#email",
+    "failure_reason": "Locator.wait_for: Timeout 3000ms exceeded.\nCall log:\n  - waiting for locator(\"#email\")\n",
+    "decision": "FAIL",
+    "page_url": "http://localhost:3000/broken-version/login.html",
+    "test_name": "playwright-tests/test_login.py::TestLoginGhostMode::test_native_login_heals_automatically[chromium]",
+    "timestamp": "2026-05-14T09:06:20.047519+00:00"
+  },
+  {
+    "healing_id": "6c0fcc87-29a7-4698-ad45-71b6e3508e51",
+    "original_locator": "#math",
+    "failure_reason": "Locator.wait_for: Timeout 2000ms exceeded.\nCall log:\n  - waiting for locator(\"#math\")\n",
+    "decision": "FAIL",
+    "page_url": "http://localhost:3000/broken-version/index.html",
+    "test_name": "Universal_Ghost_Run",
+    "timestamp": "2026-05-14T18:16:30.417510+00:00"
+  },
+  {
+    "healing_id": "3f0c87cb-ed02-444c-9046-f45ce2e7f5e6",
+    "original_locator": "#user-email",
+    "failure_reason": "Locator.wait_for: Timeout 2000ms exceeded.\nCall log:\n  - waiting for locator(\"#user-email\")\n",
+    "decision": "FAIL",
+    "page_url": "http://localhost:3000/broken-version/index.html",
+    "test_name": "Universal_Ghost_Run",
+    "timestamp": "2026-05-14T18:18:25.997187+00:00"
+  }
+]

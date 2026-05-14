@@ -37,7 +37,9 @@ def heal(
     element_hints: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """
-    Run the full self-healing pipeline and return a structured HealResponse dict.
+    Run the full self-healing pipeline. 
+    This function is the "brain" of the server. It receives a broken locator
+    and a snapshot of the page, and figures out the best new locator.
     """
     healing_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc)
@@ -58,7 +60,7 @@ def heal(
         logger.debug(f"[{healing_id}] Merged element_hints: {element_hints}")
 
     # ── Step 2: Analyze DOM — extract interactive element candidates ───────
-    candidates, total_scanned = analyze_dom(dom_snapshot, element_hints)
+    candidates, total_scanned = analyze_dom(dom_snapshot, element_hints, action=action)
 
     if not candidates:
         logger.error(f"[{healing_id}] No interactive elements found in DOM")
@@ -69,11 +71,14 @@ def heal(
         _persist(result, failure_reason, page_url, test_name)
         return result
 
-    # ── Step 3: Rank candidates via similarity engine ─────────────────────
-    ranked = rank_candidates(original_features, candidates, weights, top_n=5)
+    # ── Step 3: Rank candidates via AI Similarity Engine ──────────────────
+    # The AI scores each candidate element (0 to 100) based on how similar
+    # it is to the original broken element.
+    ranked_elements = rank_candidates(original_features, candidates, weights, top_n=5)
 
-    # ── Step 4: Confidence engine — make decision ─────────────────────────
-    confidence_result = apply_confidence_rules(ranked)
+    # ── Step 4: Confidence Engine — make a decision ───────────────────────
+    # Based on the scores, decide if we can AUTO_HEAL, require MANUAL_REVIEW, or FAIL.
+    confidence_result = apply_confidence_rules(ranked_elements)
     best = confidence_result["best_candidate"]
     decision = confidence_result["decision"]
     confidence_level = confidence_result["confidence_level"]
@@ -119,7 +124,7 @@ def heal(
                 "text": c["element_text"],
                 "breakdown": c["score_breakdown"],
             }
-            for c in ranked
+            for c in ranked_elements
         ],
     }
 
@@ -151,24 +156,9 @@ def heal(
     })
     log_healing_event(logger, record)
 
-    # ── Step 8: Build response ────────────────────────────────────────────
-
-    candidates_response = [
-        {
-            "locator": c["locator"],
-            "score": c["score"],
-            "confidence_level": get_confidence_level(c["score"]),
-            "score_breakdown": {
-                **c["score_breakdown"],
-                "dom_structure_similarity": c["score_breakdown"].get("dom_structure_similarity", 0)
-            },
-            "element_tag": c["element_tag"],
-            "element_text": c["element_text"],
-            "element_attributes": {k: str(v) for k, v in c["element_attributes"].items()},
-        }
-        for c in ranked
-    ]
-
+    # ── Step 8: Build the final JSON response ─────────────────────────────
+    # This dictionary is returned to the Playwright client.
+    
     logger.info(f"[{healing_id}] Healing complete | decision={decision} | healed={healed_locator}")
 
     return {
@@ -178,7 +168,7 @@ def heal(
         "confidence_score": confidence_score,
         "confidence_level": confidence_level,
         "decision": decision,
-        "candidates": ranked,
+        "candidates": ranked_elements,
         "execution_trace": execution_trace,
         "test_name": test_name,
         "timestamp": timestamp,

@@ -1,5 +1,59 @@
-.venv
-node_modules
-__pycache__
-.pytest_cache
-*.pyc
+# 👻 Ghost Healer: Enterprise .gitignore
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+ENV/
+build/
+dist/
+*.egg-info/
+.installed.cfg
+.pip-wheel-metadata/
+
+# ── Node.js (TypeScript) ──────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+
+# ── Java (Maven) ──────────────────────────────────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+.mvn/
+
+# ── Ghost Healer Specifics ────────────────────────────────────────────────────
+# Do NOT commit the local healing cache
+.ghost_cache.db
+.ghost_cache.db-journal
+
+# Do NOT commit reports or traces
+reports/
+execution-traces/
+*.json
+!package.json
+!composer.json
+!pyproject.toml
+!ghost.yaml
+
+# ── Environment & Secrets ─────────────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+*.secret
+secrets.yaml
+
+# ── IDE & System ──────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
