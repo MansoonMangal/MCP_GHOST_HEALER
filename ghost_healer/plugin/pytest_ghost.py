@@ -1,23 +1,32 @@
 """
-Ghost Healer — Pytest Plugin (Auto Interception)
+Ghost Healer — Pytest Plugin (Zero-Code Auto Interception)
 
-Automatically injects AI self-healing into ALL Playwright tests
-without requiring any user code change.
+Automatically injects AI self-healing into ALL tests without any
+changes to test files.
 
-How it works:
-  - Hooks into pytest-playwright's `page` fixture
-  - Calls protect_page() automatically after each page is created
-  - Zero configuration needed — just install ghost-healer
+==========================================================
+For Playwright Python tests:
+  ZERO changes needed. Just install ghost-healer.
+  pytest automatically activates the page fixture wrapper.
 
-Activation:
-  This plugin is auto-discovered by pytest via the `entry_points` in pyproject.toml:
-    [project.entry-points."pytest11"]
-    ghost = "ghost_healer.plugin.pytest_ghost"
+For Selenium Python tests:
+  Add ONE fixture to conftest.py:
 
-Usage:
-  Just install and run — no conftest.py changes needed:
-    pip install ghost-healer
-    pytest
+    @pytest.fixture(autouse=True)
+    def ghost_selenium(driver):
+        from ghost_healer.adapters.selenium import protect_driver
+        protect_driver(driver)
+        yield
+
+  Or — for truly zero changes — register your driver fixture
+  name in ghost.yaml:
+    healing:
+      selenium_fixture_name: "driver"  # name of your driver fixture
+
+==========================================================
+Activation (automatic via pyproject.toml entry_points):
+  [project.entry-points."pytest11"]
+  ghost = "ghost_healer.plugin.pytest_ghost"
 """
 import logging
 import pytest
@@ -26,48 +35,61 @@ logger = logging.getLogger("GhostPlugin")
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    """Register the Ghost Healer plugin."""
     config.addinivalue_line(
         "markers",
-        "ghost: Mark a test to use Ghost Healer AI self-healing (auto-applied to all tests)."
+        "ghost: Mark a test to use Ghost Healer AI self-healing."
     )
 
 
-@pytest.fixture(autouse=True)
-def _ghost_auto_heal(page):
-    """
-    Auto-injected fixture that wraps every Playwright `page` with Ghost protection.
+# ── Playwright auto-injection ─────────────────────────────────────────────────
 
-    This fixture runs automatically for every test that uses the `page` fixture
-    from pytest-playwright. No user code change required.
+@pytest.fixture(autouse=True)
+def _ghost_playwright_heal(request):
     """
+    Auto-inject Ghost Healer for any test using pytest-playwright's `page` fixture.
+    If the test does NOT have a `page` fixture, this does nothing.
+    """
+    # Only activate if the test uses the `page` fixture from pytest-playwright
+    if "page" not in request.fixturenames:
+        return
+
+    page = request.getfixturevalue("page")
+
     try:
         from ghost_healer.adapters.playwright import protect_page
         protect_page(page)
-        logger.debug("[GHOST-PLUGIN] Auto-protection active for this test.")
-    except ImportError:
-        logger.warning("[GHOST-PLUGIN] playwright adapter not available. Skipping.")
+        logger.debug("[GHOST-PLUGIN] Playwright page auto-protected.")
     except Exception as e:
-        logger.warning(f"[GHOST-PLUGIN] Could not protect page: {e}")
+        logger.warning(f"[GHOST-PLUGIN] Could not protect Playwright page: {e}")
 
-    yield
 
+# ── Selenium auto-injection ───────────────────────────────────────────────────
 
 @pytest.fixture(autouse=True)
-def _ghost_driver_heal(request):
+def _ghost_selenium_heal(request):
     """
-    Auto-injected fixture for Selenium WebDriver tests.
-    Looks for a `driver` fixture and patches it automatically.
+    Auto-inject Ghost Healer for Selenium WebDriver tests.
+
+    Looks for a fixture named 'driver' (configurable via ghost.yaml
+    healing.selenium_fixture_name). If found, wraps it automatically.
     """
-    driver = request.node.funcargs.get("driver")
+    # Read the expected fixture name from config
+    try:
+        from ghost_healer.core.config import settings
+        fixture_name = getattr(settings.healing, "selenium_fixture_name", "driver")
+    except Exception:
+        fixture_name = "driver"
+
+    if fixture_name not in request.fixturenames:
+        return
+
+    driver = request.getfixturevalue(fixture_name)
     if driver is None:
         return
 
     try:
         from ghost_healer.adapters.selenium import protect_driver
         protect_driver(driver)
-        logger.debug("[GHOST-PLUGIN] Auto-protection active for Selenium driver.")
-    except ImportError:
-        pass
+        logger.debug(f"[GHOST-PLUGIN] Selenium '{fixture_name}' auto-protected.")
     except Exception as e:
-        logger.warning(f"[GHOST-PLUGIN] Could not protect driver: {e}")
+        logger.warning(f"[GHOST-PLUGIN] Could not protect Selenium driver: {e}")

@@ -1,45 +1,40 @@
 """
-👻 Ghost Healer Demo — Playwright Python
+👻 Ghost Healer Demo — Playwright Python (ZERO code changes)
 
-This demo intentionally uses BROKEN locators on SauceDemo.
-Ghost Healer intercepts each failure, heals the locator via the AI Brain,
-and the test passes without any manual fix.
+This test file contains ZERO Ghost Healer code.
+No imports. No fixtures. No wrappers.
+
+Ghost Healer activates automatically because:
+  pip install ghost-healer
+  → registers pytest plugin via entry_points
+  → plugin auto-wraps the `page` fixture for every test
+
+The locators below are intentionally WRONG.
+Ghost Healer heals them. Test passes. You changed nothing.
 
 Run:
     pytest demo/playwright-python/test_demo.py -v -s
 """
-import pytest
-from ghost_healer import protect_page
-
-
-@pytest.fixture(autouse=True)
-def ghost_mode(page):
-    """Activate Ghost Healer on every test."""
-    protect_page(page)
-    yield
+# ← NO ghost_healer import
+# ← NO protect_page() call
+# ← NO fixtures
 
 
 def test_login_with_broken_locators(page):
     """
-    BROKEN LOCATORS used intentionally:
-      #user-name-WRONG → should be #user-name
-      #password-WRONG  → should be #password
-      #login-btn-WRONG → should be #login-button
-
-    Ghost Healer will intercept each failure and heal silently.
-    The test will PASS despite all three broken locators.
+    Standard Playwright test — no Ghost Healer code at all.
+    Locators are broken. Ghost Healer heals them automatically.
     """
     page.goto("https://www.saucedemo.com/")
 
-    # 🔴 BROKEN: correct is #user-name
+    # Standard page.fill() — broken selector, Ghost heals it
     page.fill("#user-name-WRONG", "standard_user")
 
-    # 🔴 BROKEN: correct is #password
+    # Standard page.fill() — broken selector, Ghost heals it
     page.fill("#password-WRONG", "secret_sauce")
 
-    # 🔴 BROKEN: correct is #login-button
+    # Standard page.click() — broken selector, Ghost heals it
     page.click("#login-btn-WRONG")
 
-    # Verify login succeeded
     assert page.url == "https://www.saucedemo.com/inventory.html"
-    print("\n✅ Login succeeded despite all broken locators — Ghost Healer worked!")
+    print("\n✅ Test passed — standard Playwright code, zero Ghost Healer imports!")
