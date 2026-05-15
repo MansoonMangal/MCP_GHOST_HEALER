@@ -23,3 +23,6 @@ httpx==0.25.1
 # ── Config & Utilities ────────────────────────────────────────────────────────
 PyYAML==6.0.1
 python-dotenv==1.0.0
+
+# ── File Locking (required by utils/db_manager.py) ────────────────────────────
+portalocker==2.8.2
