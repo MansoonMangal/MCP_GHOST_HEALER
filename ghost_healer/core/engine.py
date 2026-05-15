@@ -26,7 +26,7 @@ class GhostEngine:
                 return cached
 
         # 2. Consult Brain with Retry (For Cloud Cold Starts)
-        max_retries = 3
+        max_retries = settings.healing.max_retries
         for attempt in range(max_retries):
             try:
                 with httpx.Client(timeout=settings.mcp_server.timeout) as client:
@@ -56,7 +56,7 @@ class GhostEngine:
                     
             except (httpx.ConnectError, httpx.TimeoutException):
                 if attempt < max_retries - 1:
-                    wait = (attempt + 1) * 5
+                    wait = (attempt + 1) * settings.healing.retry_wait_seconds
                     logger.warning(f"☁️ Cloud Brain is waking up... retrying in {wait}s (Attempt {attempt+1}/{max_retries})")
                     time.sleep(wait)
                     continue
