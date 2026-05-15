@@ -5,7 +5,7 @@ healing:
 mcp_server:
   confidence_threshold: 0.5
   timeout: 30
-  url: http://localhost:8000
+  url: https://ghost-healer-brain.onrender.com
 reporting:
   format: json
   output_dir: reports/ghost
