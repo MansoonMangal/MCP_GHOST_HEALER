@@ -1,0 +1,22 @@
+{
+  "name": "ghost-healer-ts",
+  "version": "1.0.0",
+  "description": "Universal AI Self-Healing SDK for Playwright TypeScript/JavaScript",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["playwright", "self-healing", "ai", "automation", "ghost-healer"],
+  "author": "Mansoon Mangal",
+  "license": "MIT",
+  "peerDependencies": {
+    "@playwright/test": ">=1.30.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@playwright/test": "^1.39.0"
+  }
+}

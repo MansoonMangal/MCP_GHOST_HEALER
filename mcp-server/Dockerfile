@@ -1,29 +1,41 @@
-# 🧠 Ghost Healer AI Brain - Production Docker
+# Ghost Healer AI Brain — Production Dockerfile
 FROM python:3.10-slim
 
-# Prevents Python from writing pyc files and buffering stdout/stderr
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
+# Set working directory to mcp-server root
+# This ensures all relative imports (services/, ai_engine/, config/, utils/) resolve correctly
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies needed by lxml
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
-    libpq-dev \
+    libxml2-dev \
+    libxslt-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-COPY requirements.txt .
+# Copy all mcp-server files into /app
+COPY . .
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir uvicorn fastapi gunicorn
 
-# Copy application
-COPY ./app ./app
+# Ensure database and log directories exist
+RUN mkdir -p database reports/logs
 
-# Expose port (Render/AWS usually use 8000 or 10000)
+# Set PYTHONPATH so app/main.py can import from sibling packages
+ENV PYTHONPATH=/app
+
+# Expose port
 EXPOSE 8000
 
-# Use Gunicorn with Uvicorn workers for production stability
-CMD ["gunicorn", "app.main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+# Run with Gunicorn + Uvicorn workers (production-grade)
+CMD ["gunicorn", "app.main:app", \
+     "--worker-class", "uvicorn.workers.UvicornWorker", \
+     "--workers", "2", \
+     "--bind", "0.0.0.0:8000", \
+     "--timeout", "120", \
+     "--keep-alive", "5", \
+     "--log-level", "info"]
