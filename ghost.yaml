@@ -1,12 +1,18 @@
-healing:
-  auto_patch: true
-  cache_enabled: true
-  mode: runtime
 mcp_server:
-  confidence_threshold: 0.5
+  url: "https://ghost-healer-brain.onrender.com"
   timeout: 30
-  url: https://ghost-healer-brain.onrender.com
+  confidence_threshold: 0.5
+
+healing:
+  mode: "runtime"          # runtime | suggestion | strict
+  auto_patch: true         # Rewrite source files automatically
+  cache_enabled: true      # Use local SQLite cache
+  max_retries: 3           # Retries on cloud cold starts
+  retry_wait_seconds: 5    # Base wait between retries
+  framework: "playwright-python"
+
 reporting:
-  format: json
-  output_dir: reports/ghost
-  save_traces: true
+  output_dir: "reports/ghost"
+  format: "json"
+  save_traces: true        # Include Brain execution trace
+  min_confidence_to_log: 0.0
