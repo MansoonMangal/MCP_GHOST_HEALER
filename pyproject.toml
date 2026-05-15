@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ghost-healer"
-version = "1.0.0"
+version = "1.1.0"
 description = "Universal AI Self-Healing Framework for Enterprise Automation"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -26,11 +26,14 @@ dependencies = [
     "click>=8.1.7",
     "rich>=13.7.0",
     "pydantic>=2.5.0",
-    "sqlite3-api>=0.1.0"
+    "libcst>=1.1.0"
 ]
 
 [project.scripts]
 ghost-healer = "ghost_healer.cli.main:cli"
+
+[project.entry-points."pytest11"]
+ghost = "ghost_healer.plugin.pytest_ghost"
 
 [tool.setuptools.packages.find]
 where = ["."]

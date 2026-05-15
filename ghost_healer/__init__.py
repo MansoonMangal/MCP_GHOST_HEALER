@@ -1,10 +1,19 @@
 """
-👻 Ghost Healer: Enterprise AI Self-Healing Framework
-"""
+👻 Ghost Healer v1.1.0 — Universal AI Self-Healing Framework
 
-__version__ = "1.0.0"
+Public API:
+  protect_page(page)    → Playwright self-healing (Python)
+  protect_driver(driver) → Selenium self-healing (Python)
+  GhostEngine           → Core AI healing orchestrator
+"""
+__version__ = "1.1.0"
 
 from ghost_healer.core.engine import GhostEngine
 from ghost_healer.adapters.playwright import protect_page
+from ghost_healer.adapters.selenium import protect_driver
 
-__all__ = ["GhostEngine", "protect_page"]
+__all__ = [
+    "GhostEngine",
+    "protect_page",
+    "protect_driver",
+]
