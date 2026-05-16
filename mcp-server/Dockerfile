@@ -32,10 +32,11 @@ ENV PYTHONPATH=/app
 EXPOSE 8000
 
 # Run with Gunicorn + Uvicorn workers (production-grade)
-CMD ["gunicorn", "app.main:app", \
-     "--worker-class", "uvicorn.workers.UvicornWorker", \
-     "--workers", "2", \
-     "--bind", "0.0.0.0:8000", \
-     "--timeout", "120", \
-     "--keep-alive", "5", \
-     "--log-level", "info"]
+# Render sets $PORT dynamically; default to 8000 for local dev
+CMD gunicorn app.main:app \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --workers 2 \
+    --bind 0.0.0.0:${PORT:-8000} \
+    --timeout 120 \
+    --keep-alive 5 \
+    --log-level info
