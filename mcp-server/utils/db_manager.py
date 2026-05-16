@@ -1,6 +1,8 @@
 """
-Thread-safe JSON database manager with file locking.
-Acts as a lightweight persistence layer for healing records.
+Thread-safe database manager — Hybrid Storage Layer.
+
+Production (Render): Uses MongoDB when MONGO_URI env var is set.
+Local Development:   Falls back to thread-safe JSON files with file locking.
 """
 import json
 import uuid
@@ -15,7 +17,23 @@ from config.settings import settings
 
 logger = get_logger("db_manager", settings.log_file, settings.log_level)
 
-# ── File paths ────────────────────────────────────────────────────────────────
+# ── Detect storage backend ────────────────────────────────────────────────────
+_USE_MONGO = bool(settings.mongo_uri)
+_mongo_db = None
+
+if _USE_MONGO:
+    try:
+        from pymongo import MongoClient
+        _client = MongoClient(settings.mongo_uri, serverSelectionTimeoutMS=5000)
+        _mongo_db = _client.get_database("ghost_healer")
+        logger.info("✅ MongoDB connected — using persistent storage (production mode)")
+    except Exception as e:
+        logger.warning(f"⚠️  MongoDB connection failed, falling back to JSON files: {e}")
+        _USE_MONGO = False
+else:
+    logger.info("📁 MONGO_URI not set — using local JSON file storage (dev mode)")
+
+# ── JSON File paths (dev fallback) ────────────────────────────────────────────
 DB_PATH = Path(settings.db_path)
 HEALED_LOCATORS_FILE = DB_PATH / "healed_locators.json"
 FAILURE_LOGS_FILE = DB_PATH / "failure_logs.json"
@@ -56,45 +74,62 @@ def _write_json(filepath: Path, data: List[Dict]) -> None:
 
 def save_healing_record(record: Dict[str, Any]) -> str:
     """
-    Persist a healing decision record to healed_locators.json.
+    Persist a healing decision record.
     Returns the generated healing_id.
     """
     healing_id = record.get("healing_id") or str(uuid.uuid4())
     record["healing_id"] = healing_id
     record.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
 
-    records = _read_json(HEALED_LOCATORS_FILE)
-    records.append(record)
-    _write_json(HEALED_LOCATORS_FILE, records)
+    if _USE_MONGO:
+        _mongo_db["healed_locators"].insert_one({**record, "_id": healing_id})
+    else:
+        records = _read_json(HEALED_LOCATORS_FILE)
+        records.append(record)
+        _write_json(HEALED_LOCATORS_FILE, records)
 
     logger.debug(f"Saved healing record [{healing_id}]")
     return healing_id
 
 
 def save_failure_log(log_entry: Dict[str, Any]) -> None:
-    """Append a failure log entry to failure_logs.json."""
+    """Append a failure log entry."""
     log_entry.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
-    logs = _read_json(FAILURE_LOGS_FILE)
-    logs.append(log_entry)
-    _write_json(FAILURE_LOGS_FILE, logs)
+
+    if _USE_MONGO:
+        _mongo_db["failure_logs"].insert_one(log_entry)
+    else:
+        logs = _read_json(FAILURE_LOGS_FILE)
+        logs.append(log_entry)
+        _write_json(FAILURE_LOGS_FILE, logs)
 
 
 def save_confidence_score(score_entry: Dict[str, Any]) -> None:
-    """Append a confidence score entry to confidence_scores.json."""
+    """Append a confidence score entry."""
     score_entry.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
-    scores = _read_json(CONFIDENCE_SCORES_FILE)
-    scores.append(score_entry)
-    _write_json(CONFIDENCE_SCORES_FILE, scores)
+
+    if _USE_MONGO:
+        _mongo_db["confidence_scores"].insert_one(score_entry)
+    else:
+        scores = _read_json(CONFIDENCE_SCORES_FILE)
+        scores.append(score_entry)
+        _write_json(CONFIDENCE_SCORES_FILE, scores)
 
 
 def get_all_healing_records() -> List[Dict]:
     """Return all healing records sorted newest-first."""
+    if _USE_MONGO:
+        docs = list(_mongo_db["healed_locators"].find({}, {"_id": 0}).sort("timestamp", -1))
+        return docs
     records = _read_json(HEALED_LOCATORS_FILE)
     return sorted(records, key=lambda r: r.get("timestamp", ""), reverse=True)
 
 
 def get_healing_record_by_id(healing_id: str) -> Optional[Dict]:
     """Fetch a single healing record by its ID."""
+    if _USE_MONGO:
+        doc = _mongo_db["healed_locators"].find_one({"healing_id": healing_id}, {"_id": 0})
+        return doc
     records = _read_json(HEALED_LOCATORS_FILE)
     for r in records:
         if r.get("healing_id") == healing_id:
@@ -104,7 +139,8 @@ def get_healing_record_by_id(healing_id: str) -> Optional[Dict]:
 
 def get_confidence_report_data() -> Dict[str, Any]:
     """Aggregate statistics for the confidence report endpoint."""
-    records = _read_json(HEALED_LOCATORS_FILE)
+    records = get_all_healing_records()
+
     if not records:
         return {
             "total_healed": 0, "auto_heal_count": 0, "manual_review_count": 0,

@@ -24,6 +24,7 @@ class Settings:
 
     # ── Database ─────────────────────────────────────────────────────────
     db_path: str = os.getenv("DB_PATH", "database")
+    mongo_uri: str = os.getenv("MONGO_URI", "")          # Set by Render in production
 
     def get_weights(self) -> Dict[str, float]:
         return {
