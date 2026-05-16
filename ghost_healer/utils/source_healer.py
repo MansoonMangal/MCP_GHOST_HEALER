@@ -140,6 +140,8 @@ class SourceHealer:
         new_selector: str,
         file_path: Optional[str] = None,
     ) -> bool:
+        if not new_selector:
+            return False
         """
         Find and rewrite the test file containing old_selector.
 
@@ -166,7 +168,8 @@ class SourceHealer:
         )
 
         if suffix == ".py":
-            patched = _patch_python_ast(target, old_selector, new_selector)
+            # Use regex for Python too — it's more robust for simple replacements
+            patched = _patch_regex(target, old_selector, new_selector)
         else:
             # TypeScript (.ts), JavaScript (.js), Java (.java)
             patched = _patch_regex(target, old_selector, new_selector)

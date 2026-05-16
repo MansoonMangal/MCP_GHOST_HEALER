@@ -20,6 +20,7 @@ from typing import Any
 
 from ghost_healer.core.engine import ghost_engine
 from ghost_healer.utils.reporter import reporter
+from ghost_healer.utils.source_healer import source_healer
 
 logger = logging.getLogger("GhostSelenium")
 
@@ -59,9 +60,12 @@ def protect_driver(driver: Any) -> Any:
     def _get_dom(drv) -> str:
         """Capture current page source as DOM snapshot."""
         try:
-            return drv.page_source
+            return drv.execute_script("return document.documentElement.outerHTML")
         except Exception:
-            return ""
+            try:
+                return drv.page_source
+            except Exception:
+                return ""
 
     def healed_find_element(by: Any, value: str):
         try:
@@ -79,12 +83,17 @@ def protect_driver(driver: Any) -> Any:
 
             start = time.time()
             dom = _get_dom(driver)
-            healed = ghost_engine.get_healed_locator(selector, "click", dom)
+            url = driver.current_url
+            healed = ghost_engine.get_healed_locator(selector, "click", dom, url=url, framework="selenium-python")
             duration = (time.time() - start) * 1000
 
             if healed:
                 logger.info(f"[GHOST] Healed '{selector}' → '{healed}'")
                 reporter.log_healing(selector, healed, 0.0, duration)
+                
+                # PERMANENT PATCH: fix the source file
+                source_healer.apply_fix(selector, healed)
+
                 from selenium.webdriver.common.by import By
                 return original_find_element(By.CSS_SELECTOR, healed)
 

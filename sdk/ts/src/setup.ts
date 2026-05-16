@@ -68,6 +68,10 @@ async function consultBrain(
   return null;
 }
 
+import { sourceHealer } from './SourceHealer';
+
+// ... (keep consultBrain as is) ...
+
 // ── Generic heal-and-retry wrapper ───────────────────────────────────────────
 
 function makeHealed(
@@ -91,6 +95,8 @@ function makeHealed(
       const [dom, url] = await Promise.all([page.content(), Promise.resolve(page.url())]);
       const healed = await consultBrain(selector, action, dom, url);
       if (healed) {
+        // PERMANENT PATCH: fix the source file
+        sourceHealer.applyFix(selector, healed);
         return await original.call(this, healed, ...args);
       }
       // Re-run with original timeout to get the proper error message

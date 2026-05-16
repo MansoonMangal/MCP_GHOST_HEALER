@@ -4,9 +4,7 @@
 const { defineConfig } = require('@playwright/test');
 
 module.exports = defineConfig({
-  // ← ADD THIS ONE LINE to your existing playwright.config.js
-  globalSetup: require.resolve('../../sdk/ts/src/setup'),
-  use: { headless: true },
+  use: { headless: false },
   testDir: '.',
   timeout: 60000,
 });
