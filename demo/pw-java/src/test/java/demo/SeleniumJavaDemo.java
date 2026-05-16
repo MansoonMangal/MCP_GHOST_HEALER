@@ -31,7 +31,8 @@ abstract class BaseTest {
     void setUp() {
         ChromeOptions opts = new ChromeOptions();
         opts.addArguments("--no-sandbox", "--disable-dev-shm-usage");
-        driver = new ChromeDriver(opts); // unchanged — extension wraps it automatically
+        // Explicitly wrap for the demo to ensure it works in all environments
+        driver = GhostHealerExtension.wrap(new ChromeDriver(opts));
     }
 
     @AfterEach

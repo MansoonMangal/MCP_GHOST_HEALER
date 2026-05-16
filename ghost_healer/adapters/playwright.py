@@ -10,6 +10,7 @@ import logging
 from playwright.sync_api import Page
 from ghost_healer.core.engine import ghost_engine
 from ghost_healer.utils.reporter import reporter
+from ghost_healer.utils.source_healer import source_healer
 
 logger = logging.getLogger("GhostPlaywright")
 
@@ -29,12 +30,16 @@ def _heal_and_retry(page: Page, selector: str, action: str, original_fn, *args, 
     except Exception as original_error:
         start = time.time()
         logger.warning(f"[GHOST] {action} failed for '{selector}'. Requesting AI heal...")
-        healed = ghost_engine.get_healed_locator(selector, action, page.content())
+        healed = ghost_engine.get_healed_locator(selector, action, page.content(), url=page.url, framework="playwright-python")
         duration = (time.time() - start) * 1000
 
         if healed:
             logger.info(f"[GHOST] Healed '{selector}' → '{healed}' (action={action})")
             reporter.log_healing(selector, healed, 0.0, duration)
+            
+            # PERMANENT PATCH: fix the source file
+            source_healer.apply_fix(selector, healed)
+
             return original_fn(healed, *args, **kwargs)
 
         logger.error(f"[GHOST] Could not heal '{selector}'. Raising original error.")

@@ -1,49 +1,81 @@
-# 👻 Ghost Healer: Tests That Fix Themselves
+# 👻 Ghost Healer: Universal AI Self-Healing Automation
+
 ### **The world's first language-agnostic, zero-refactor AI self-healing automation platform.**
 
-[![PyPI version](https://badge.fury.io/py/ghost-healer.svg)](https://badge.fury.io/py/ghost-healer)
-[![Docker Support](https://img.shields.io/badge/docker-supported-blue.svg)](https://www.docker.com/)
-[![Cloud Ready](https://img.shields.io/badge/deployment-cloud--ready-green.svg)](https://render.com)
+Ghost Healer is a revolutionary framework that automatically detects broken locators during test execution, consults an AI Brain to find the correct element, and **permanently patches your source code** so you never have to fix the same locator twice.
 
 ---
 
-## ☁️ Cloud-Native Reliability
-Ghost Healer is now fully optimized for cloud deployments. Whether your AI Brain is hosted on **Render**, **AWS**, or **Azure**, the framework handles:
-- **Automatic Wake-up**: Detects and waits for server "cold starts".
-- **Resilient Connectivity**: Built-in exponential backoff for transient network issues.
-- **SSL/HTTPS**: Production-ready encrypted communication.
+## ✨ Key Features
+
+- **Zero Code Changes Required**: Integrating Ghost Healer into your existing test suites requires absolutely no changes to your test scripts (`page.click()`, `driver.findElement()`, etc. remain untouched).
+- **Cross-Platform & Cross-Language**: Fully supports **Playwright** and **Selenium** across **Python, Java, JavaScript, and TypeScript**.
+- **Permanent Source Patching**: It doesn't just heal the test in memory; it finds your original source file and physically updates the code with the correct locator.
+- **Cloud-Native Brain**: Connects to a centralized AI Brain (e.g., hosted on Render) for high-accuracy DOM analysis and element matching.
 
 ---
 
-## 🚀 Quick Start (Cloud Mode)
+## 🚀 Quick Start Guide
 
-### 1. Configure the Brain
-Update your `ghost.yaml` with your live Cloud Brain URL:
-```yaml
-mcp_server:
-  url: "https://your-app.onrender.com"
-```
-
-### 2. Verify Connection
+### 1. Configure the Brain URL
+Set the environment variable for the AI Brain.
 ```bash
-python scripts/verify_cloud.py
+export GHOST_BRAIN_URL="https://ghost-healer-brain.onrender.com"
+```
+*(On Windows PowerShell, use `$env:GHOST_BRAIN_URL="https://ghost-healer-brain.onrender.com"`)*
+
+### 2. Integration by Platform
+
+The beauty of Ghost Healer is the minimal setup required.
+
+#### 🐍 Python (Playwright & Selenium)
+**Setup**: Install the package.
+```bash
+pip install ghost-healer
+```
+**Playwright**: Run tests normally. The `pytest` plugin automatically wraps the `page` fixture.
+```bash
+pytest demo/playwright-python/test_demo.py
+```
+**Selenium**: Wrap your driver instance once.
+```python
+from ghost_healer import protect_driver
+protect_driver(driver)
 ```
 
-### 3. Run Protected Tests
+#### ☕ Java (Selenium & Playwright)
+**Setup**: Add the dependency and extension.
+**Selenium (JUnit 5)**: Add the `GhostHealerExtension` to your test class.
+```java
+@ExtendWith(GhostHealerExtension.class)
+public class MyTest { ... }
+```
+**Playwright**: Use the `GhostHealer` wrapper around your Playwright `Page`.
+
+#### 📜 JavaScript / TypeScript (Playwright & Selenium)
+**Setup**: Install the package.
 ```bash
-pytest
+npm install ghost-healer-ts
+```
+**Playwright**: Add one line to your `playwright.config.ts`.
+```typescript
+globalSetup: require.resolve('ghost-healer-ts/dist/setup')
+```
+**Selenium**: Add one require statement to your test runner config (e.g., Mocha or Jest).
+```javascript
+// In .mocharc.js or jest.config.js
+require('ghost-healer-ts/dist/selenium-setup')
 ```
 
 ---
 
-## 🏛️ Project Architecture
-Ghost Healer uses a **Distributed DNA Matching** architecture.
+## 🛠️ How It Works
 
-### 1. The SDK (`ghost_healer/`)
-Installs in your test project. Invisible and zero-refactor.
-
-### 2. The Brain (`mcp-server/`)
-Centralized FastAPI server. Analyzes DOM snapshots and returns high-confidence heals. Now supports **Render Blueprint** for one-click global deployment.
+1. **Interception**: When a locator fails (e.g., `NoSuchElementException` or Playwright Timeout), Ghost Healer intercepts the error.
+2. **Analysis**: It captures the current DOM and sends it to the AI Brain.
+3. **Healing**: The AI Brain analyzes the DOM, identifies the intended element, and returns a high-confidence updated locator.
+4. **Execution**: Ghost Healer retries the action with the new locator, allowing the test to pass seamlessly.
+5. **Patching**: Behind the scenes, the `SourceHealer` engine locates the exact file and line of code that failed and permanently updates it with the new locator.
 
 ---
 

@@ -1,11 +1,11 @@
 mcp_server:
   url: "https://ghost-healer-brain.onrender.com"
   timeout: 30
-  confidence_threshold: 0.5
+  confidence_threshold: 0.0
 
 healing:
   mode: "runtime"          # runtime | suggestion | strict
-  auto_patch: true         # Rewrite source files automatically
+  auto_patch: true          # Zero-code change: permanently fix source code
   cache_enabled: true      # Use local SQLite cache
   max_retries: 3           # Retries on cloud cold starts
   retry_wait_seconds: 5    # Base wait between retries

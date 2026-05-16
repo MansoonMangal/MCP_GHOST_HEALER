@@ -2,18 +2,16 @@
  * 👻 Ghost Healer — Playwright TypeScript Config
  *
  * The ONLY change needed in your existing playwright.config.ts is:
- *   globalSetup: require.resolve('ghost-healer-ts/setup')
+ *   require('ghost-healer-ts/pw-hook.js')
  *
  * That's it. All your tests heal automatically.
  */
 import { defineConfig } from '@playwright/test';
+require('../../sdk/ts/src/pw-hook.js');
 
 export default defineConfig({
-  // ← THIS IS THE ONLY LINE YOU ADD TO YOUR EXISTING CONFIG
-  globalSetup: require.resolve('../../sdk/ts/src/setup'),
-
   use: {
-    headless: true,
+    headless: false,
     screenshot: 'only-on-failure',
   },
 

@@ -8,15 +8,24 @@
     "build": "tsc",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["playwright", "self-healing", "ai", "automation", "ghost-healer"],
+  "keywords": [
+    "playwright",
+    "self-healing",
+    "ai",
+    "automation",
+    "ghost-healer"
+  ],
   "author": "Mansoon Mangal",
   "license": "MIT",
   "peerDependencies": {
     "@playwright/test": ">=1.30.0"
   },
   "devDependencies": {
-    "typescript": "^5.0.0",
+    "@playwright/test": "^1.39.0",
     "@types/node": "^20.0.0",
-    "@playwright/test": "^1.39.0"
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.1"
   }
 }

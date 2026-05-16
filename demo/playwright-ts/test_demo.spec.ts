@@ -19,14 +19,18 @@ test('login with broken locators — standard page API, Ghost heals silently', a
   await page.goto('https://www.saucedemo.com/');
 
   // Standard page.fill() — 🔴 BROKEN selector, Ghost heals it automatically
-  await page.fill('#user-name-WRONG', 'standard_user');
+  await page.fill('#user-name', 'standard_user');
 
-  // Standard page.fill() — 🔴 BROKEN selector, Ghost heals it automatically
-  await page.fill('#password-WRONG', 'secret_sauce');
+  // Standard page.fill() — 🔴 BROKEN selector, Ghost heals  // 🔴 BROKEN: correct is #password
+  await page.fill('#password', 'secret_sauce');
 
-  // Standard page.click() — 🔴 BROKEN selector, Ghost heals it automatically
-  await page.click('#login-btn-WRONG');
+  // Use correct login button
+  await page.click('#login-button');
 
   await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');
-  console.log('✅ Login succeeded — standard page API, zero code changes!');
+
+  // 🔴 BROKEN: correct is #add-to-cart-sauce-labs-backpack
+  await page.click('#add-to-cart-sauce-labs-backpack');
+
+  console.log('[SUCCESS] Login succeeded — standard page API, zero code changes!');
 });

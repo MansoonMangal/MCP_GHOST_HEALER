@@ -24,8 +24,7 @@ public class PlaywrightJavaDemo {
     static void launchBrowser() {
         playwright = Playwright.create();
         browser = playwright.chromium().launch(
-            new BrowserType.LaunchOptions().setHeadless(true)
-        );
+                new BrowserType.LaunchOptions().setHeadless(false));
     }
 
     @BeforeEach
@@ -54,11 +53,18 @@ public class PlaywrightJavaDemo {
         page.navigate("https://www.saucedemo.com/");
 
         // Standard Playwright Java API — broken selectors, Ghost heals silently
-        page.fill("#user-name-WRONG", "standard_user");   // healed → #user-name
-        page.fill("#password-WRONG", "secret_sauce");      // healed → #password
-        page.click("#login-btn-WRONG");                    // healed → #login-button
+        page.fill("#login-button", "standard_user");
+        page.fill("#man", "secret_sauce");
+
+        // Correct login button
+        page.click("#login-button-WRONG");
 
         Assertions.assertTrue(page.url().contains("inventory"));
-        System.out.println("✅ PW + Java: Passed with one-line change in setUp!");
+
+        // 🔴 BROKEN: correct is #add-to-cart-sauce-labs-backpack
+        page.click("#item_4_img_link");
+
+        Assertions.assertTrue(page.url().contains("inventory"));
+        System.out.println("[SUCCESS] PW + Java: Passed with one-line change in setUp!");
     }
 }

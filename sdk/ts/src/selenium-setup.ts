@@ -13,6 +13,7 @@
  */
 
 import { WebDriver, By } from 'selenium-webdriver';
+import { sourceHealer } from './SourceHealer';
 
 const BRAIN_URL =
   process.env['GHOST_BRAIN_URL'] || 'https://ghost-healer-brain.onrender.com';
@@ -27,6 +28,7 @@ async function consultBrain(
   dom: string,
   url: string
 ): Promise<string | null> {
+  console.log(`[GHOST] Consulting brain at ${BRAIN_URL}...`);
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       const resp = await fetch(`${BRAIN_URL}/api/heal-locator`, {
@@ -35,15 +37,21 @@ async function consultBrain(
         body: JSON.stringify({ selector, action, dom_snapshot: dom, page_url: url }),
         signal: AbortSignal.timeout(30000),
       });
-      if (!resp.ok) return null;
+      if (!resp.ok) {
+        console.error(`[GHOST] Brain returned ${resp.status}: ${resp.statusText}`);
+        return null;
+      }
       const data = (await resp.json()) as any;
+      console.log(`[GHOST] Brain response: ${JSON.stringify(data)}`);
       if (data.healed_locator && data.confidence >= CONFIDENCE_THRESHOLD) {
         console.log(`[GHOST] Healed '${selector}' → '${data.healed_locator}' (${(data.confidence * 100).toFixed(1)}%)`);
         return data.healed_locator as string;
       }
+      console.log(`[GHOST] Brain rejected heal. Confidence: ${data.confidence}, Threshold: ${CONFIDENCE_THRESHOLD}`);
       return null;
-    } catch {
-      await new Promise((r) => setTimeout(r, (attempt + 1) * 5000));
+    } catch (e: any) {
+      console.error(`[GHOST] Brain request failed (attempt ${attempt + 1}): ${e.message}`);
+      await new Promise((r) => setTimeout(r, (attempt + 1) * 2000));
     }
   }
   return null;
@@ -94,6 +102,7 @@ proto.findElement = async function (locator: any) {
       const url: string = await this.getCurrentUrl();
       const healed = await consultBrain(selector, 'click', dom, url);
       if (healed) {
+        sourceHealer.applyFix(selector, healed);
         return await _originalFindElement.call(this, By.css(healed));
       }
     } catch (brainError) {

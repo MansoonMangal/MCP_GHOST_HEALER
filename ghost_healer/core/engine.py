@@ -18,7 +18,7 @@ class GhostEngine:
         self.threshold = settings.mcp_server.confidence_threshold
         self.mode = settings.healing.mode
 
-    def get_healed_locator(self, selector: str, action: str, dom: str) -> Optional[str]:
+    def get_healed_locator(self, selector: str, action: str, dom: str, url: Optional[str] = None, framework: Optional[str] = None) -> Optional[str]:
         # 1. Check Cache
         if settings.healing.cache_enabled:
             cached = cache.get(selector)
@@ -30,9 +30,16 @@ class GhostEngine:
         for attempt in range(max_retries):
             try:
                 with httpx.Client(timeout=settings.mcp_server.timeout) as client:
+                    payload = {
+                        "selector": selector,
+                        "action": action,
+                        "dom_snapshot": dom,
+                        "page_url": url,
+                        "framework": framework or settings.healing.framework
+                    }
                     response = client.post(
                         f"{self.server_url}/api/heal-locator",
-                        json={"selector": selector, "action": action, "dom_snapshot": dom}
+                        json=payload
                     )
                     
                     if response.status_code == 200:

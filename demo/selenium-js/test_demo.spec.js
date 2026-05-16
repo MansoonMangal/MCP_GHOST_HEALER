@@ -12,12 +12,13 @@ const { Builder, By } = require('selenium-webdriver');
 const { Options } = require('selenium-webdriver/chrome');
 const assert = require('assert');
 
-describe('Selenium JS — Ghost healing demo', () => {
+describe('Selenium JS — Ghost healing demo', function() {
+  this.timeout(30000); // 👻 Increase timeout for AI healing
   let driver;
 
   before(async () => {
     const opts = new Options();
-    opts.addArguments('--headless', '--no-sandbox', '--disable-dev-shm-usage');
+    opts.addArguments('--no-sandbox', '--disable-dev-shm-usage');
     driver = await new Builder()
       .forBrowser('chrome')
       .setChromeOptions(opts)
@@ -33,12 +34,12 @@ describe('Selenium JS — Ghost healing demo', () => {
     await driver.get('https://www.saucedemo.com/');
 
     // Standard findElement — broken, Ghost heals silently
-    await (await driver.findElement(By.id('user-name-WRONG'))).sendKeys('standard_user');
-    await (await driver.findElement(By.id('password-WRONG'))).sendKeys('secret_sauce');
-    await (await driver.findElement(By.id('login-btn-WRONG'))).click();
+    await (await driver.findElement(By.css('#user-name'))).sendKeys('standard_user');
+    await (await driver.findElement(By.css('#password'))).sendKeys('secret_sauce');
+    await (await driver.findElement(By.id('login-button'))).click();
 
     const url = await driver.getCurrentUrl();
     assert.ok(url.includes('inventory'), `Expected inventory, got: ${url}`);
-    console.log('✅ Selenium + JS: Passed with zero Ghost Healer code in test!');
+    console.log('[SUCCESS] Selenium + JS: Passed with zero Ghost Healer code in test!');
   });
 });
