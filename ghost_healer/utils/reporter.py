@@ -84,16 +84,15 @@ class HealingReporter:
             f"| confidence={confidence:.0%} | decision={decision}"
         )
 
-        # Eagerly flush if save_traces is enabled
-        if settings.reporting.save_traces:
-            self._flush_event(event)
+        # Eagerly flush to a beautiful pretty-printed JSON file
+        self._flush_event(event)
 
     def _flush_event(self, event: Dict[str, Any]) -> None:
-        """Append a single event to the live JSONL log file."""
-        live_log = os.path.join(self.output_dir, f"session_{self.session_id}.jsonl")
+        """Eagerly write a beautiful, indented standard JSON session array."""
+        live_log = os.path.join(self.output_dir, f"session_{self.session_id}.json")
         try:
-            with open(live_log, "a", encoding="utf-8") as f:
-                f.write(json.dumps(event) + "\n")
+            with open(live_log, "w", encoding="utf-8") as f:
+                json.dump(self.events, f, indent=2, default=str)
         except Exception as e:
             logger.warning(f"[REPORTER] Could not flush event: {e}")
 
