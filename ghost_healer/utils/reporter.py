@@ -51,34 +51,27 @@ class HealingReporter:
         action: str = "click",
         execution_trace: Optional[Dict] = None,
         framework: Optional[str] = None,
+        page_url: Optional[str] = None,
+        line: int = 0,
     ) -> None:
         """
         Log a single healing event with full metadata.
-
-        Args:
-            original:        The broken locator
-            healed:          The AI-healed locator
-            confidence:      Confidence score (0.0 - 1.0)
-            duration_ms:     Time taken to heal in milliseconds
-            decision:        AUTO_HEAL / MANUAL_REVIEW / FAIL
-            retry_count:     Number of retries before success
-            patched_file:    Source file that was auto-patched (if any)
-            action:          Playwright/Selenium action that failed
-            execution_trace: Full Brain execution trace (from API response)
-            framework:       SDK framework (playwright-python, selenium-java, etc.)
         """
         event: Dict[str, Any] = {
             "timestamp": datetime.now(timezone(timedelta(hours=5, minutes=30))).isoformat(),
             "session_id": self.session_id,
             "framework": framework or self.framework,
+            "language": "python",
+            "file": patched_file,
+            "line": line,
             "action": action,
-            "original_selector": original,
-            "healed_selector": healed,
-            "confidence_score": round(confidence, 4),
+            "old_locator": original,
+            "suggested_locator": healed,
+            "confidence": round(confidence, 4),
+            "page_url": page_url,
             "decision": decision,
             "latency_ms": round(duration_ms, 2),
             "retry_count": retry_count,
-            "patched_file": os.path.basename(patched_file) if patched_file else None,
             "healing_mode": settings.healing.mode,
         }
 
@@ -115,13 +108,13 @@ class HealingReporter:
         total = len(self.events)
         healed = [e for e in self.events if e["decision"] == "AUTO_HEAL"]
         failed = [e for e in self.events if e["decision"] == "FAIL"]
-        avg_confidence = sum(e["confidence_score"] for e in healed) / len(healed) if healed else 0
+        avg_confidence = sum(e["confidence"] for e in healed) / len(healed) if healed else 0
         avg_latency = sum(e["latency_ms"] for e in self.events) / total
 
         # Most healed locators
         locator_counts: Dict[str, int] = {}
         for e in self.events:
-            loc = e["original_selector"]
+            loc = e["old_locator"]
             locator_counts[loc] = locator_counts.get(loc, 0) + 1
         top_locators = sorted(
             locator_counts.items(), key=lambda x: x[1], reverse=True
@@ -143,7 +136,7 @@ class HealingReporter:
                 "success_rate_percent": round(len(healed) / total * 100, 1) if total else 0,
                 "average_confidence": round(avg_confidence, 4),
                 "average_latency_ms": round(avg_latency, 2),
-                "total_files_patched": sum(1 for e in self.events if e.get("patched_file")),
+                "total_files_patched": sum(1 for e in self.events if e.get("file")),
             },
             "top_unstable_locators": [
                 {"selector": loc, "failure_count": cnt} for loc, cnt in top_locators

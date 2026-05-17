@@ -22,7 +22,7 @@ def _heal_and_retry_page(page: Page, selector: str, action: str, original_fn, *a
     except Exception as original_error:
         start = time.time()
         logger.warning(f"[GHOST] {action} failed for '{selector}'. Requesting AI heal...")
-        healed = ghost_engine.get_healed_locator(selector, action, page.content(), url=page.url, framework="playwright-python")
+        healed, confidence = ghost_engine.get_healed_locator(selector, action, page.content(), url=page.url, framework="playwright-python")
         duration = (time.time() - start) * 1000
 
         if healed:
@@ -31,11 +31,13 @@ def _heal_and_retry_page(page: Page, selector: str, action: str, original_fn, *a
             reporter.log_healing(
                 original=selector,
                 healed=healed,
-                confidence=0.0,
+                confidence=confidence,
                 duration_ms=duration,
                 action=action,
                 patched_file=filename,
-                framework="playwright-python"
+                framework="playwright-python",
+                page_url=page.url,
+                line=lineno
             )
 
             return original_fn(healed, *args, **kwargs)
@@ -61,7 +63,7 @@ def _heal_and_retry_locator(locator: Locator, selector: str, page: Page, action:
     except Exception as original_error:
         start = time.time()
         logger.warning(f"[GHOST] {action} failed for locator '{selector}'. Requesting AI heal...")
-        healed = ghost_engine.get_healed_locator(selector, action, page.content(), url=page.url, framework="playwright-python")
+        healed, confidence = ghost_engine.get_healed_locator(selector, action, page.content(), url=page.url, framework="playwright-python")
         duration = (time.time() - start) * 1000
 
         if healed:
@@ -70,11 +72,13 @@ def _heal_and_retry_locator(locator: Locator, selector: str, page: Page, action:
             reporter.log_healing(
                 original=selector,
                 healed=healed,
-                confidence=0.0,
+                confidence=confidence,
                 duration_ms=duration,
                 action=action,
                 patched_file=filename,
-                framework="playwright-python"
+                framework="playwright-python",
+                page_url=page.url,
+                line=lineno
             )
 
             # Re-locate with healed selector

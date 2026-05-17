@@ -16,12 +16,12 @@ class GhostEngine:
         self.threshold = settings.mcp_server.confidence_threshold
         self.mode = settings.healing.mode
 
-    def get_healed_locator(self, selector: str, action: str, dom: str, url: Optional[str] = None, framework: Optional[str] = None) -> Optional[str]:
+    def get_healed_locator(self, selector: str, action: str, dom: str, url: Optional[str] = None, framework: Optional[str] = None) -> tuple[Optional[str], float]:
         # 1. Check Cache
         if settings.healing.cache_enabled:
-            cached = cache.get(selector)
-            if cached:
-                return cached
+            cached_selector, cached_confidence = cache.get_with_confidence(selector)
+            if cached_selector:
+                return cached_selector, cached_confidence
 
         # 2. Consult Brain with Retry (For Cloud Cold Starts)
         max_retries = settings.healing.max_retries
@@ -42,19 +42,19 @@ class GhostEngine:
                     
                     if response.status_code == 200:
                         data = response.json()
-                        confidence = data.get("confidence", 0)
+                        confidence = data.get("confidence", 0.0)
                         healed = data.get("healed_locator")
 
                         if confidence < self.threshold:
-                            return None
+                            return None, confidence
 
                         if self.mode == "suggestion":
-                            return None
+                            return None, confidence
                         
                         if settings.healing.cache_enabled:
                             cache.set(selector, healed, confidence)
                             
-                        return healed
+                        return healed, confidence
                     
             except (httpx.ConnectError, httpx.TimeoutException):
                 if attempt < max_retries - 1:
@@ -64,7 +64,7 @@ class GhostEngine:
                     continue
                 raise
 
-        return None
+        return None, 0.0
 
 # Global engine instance
 ghost_engine = GhostEngine()

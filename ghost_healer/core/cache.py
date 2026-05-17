@@ -34,6 +34,19 @@ class HealingCache:
             logger.error(f"Cache read error: {e}")
             return None
 
+    def get_with_confidence(self, selector: str) -> tuple[Optional[str], float]:
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.execute(
+                    "SELECT healed_selector, confidence FROM locator_cache WHERE original_selector = ?", 
+                    (selector,)
+                )
+                row = cursor.fetchone()
+                return (row[0], row[1] if row[1] is not None else 0.0) if row else (None, 0.0)
+        except Exception as e:
+            logger.error(f"Cache read error: {e}")
+            return (None, 0.0)
+
     def set(self, original: str, healed: str, confidence: float):
         try:
             with sqlite3.connect(self.db_path) as conn:
