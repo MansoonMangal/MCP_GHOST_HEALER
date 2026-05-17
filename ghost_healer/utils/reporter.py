@@ -10,7 +10,7 @@ import os
 import time
 import logging
 import platform
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 from ghost_healer.core.config import settings
 
@@ -29,9 +29,12 @@ class HealingReporter:
     """
 
     def __init__(self):
-        self.output_dir = settings.reporting.output_dir
+        # Resolve to workspace root (2 levels up from ghost_healer/utils/reporter.py is project root)
+        root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+        self.output_dir = os.path.join(root_dir, settings.reporting.output_dir)
         self.events: List[Dict[str, Any]] = []
-        self.session_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+        ist_tz = timezone(timedelta(hours=5, minutes=30))
+        self.session_id = datetime.now(ist_tz).strftime("%Y%m%d_%H%M%S")
         self.framework = settings.healing.framework
         os.makedirs(self.output_dir, exist_ok=True)
 
@@ -65,7 +68,7 @@ class HealingReporter:
             framework:       SDK framework (playwright-python, selenium-java, etc.)
         """
         event: Dict[str, Any] = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(timezone(timedelta(hours=5, minutes=30))).isoformat(),
             "session_id": self.session_id,
             "framework": framework or self.framework,
             "action": action,
@@ -127,7 +130,7 @@ class HealingReporter:
         report = {
             "meta": {
                 "session_id": self.session_id,
-                "generated_at": datetime.now(timezone.utc).isoformat(),
+                "generated_at": datetime.now(timezone(timedelta(hours=5, minutes=30))).isoformat(),
                 "framework": self.framework,
                 "healing_mode": settings.healing.mode,
                 "platform": platform.system(),
