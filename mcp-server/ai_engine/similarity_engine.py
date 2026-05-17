@@ -43,6 +43,7 @@ def _attribute_similarity(orig: Dict, cand: Dict) -> float:
         ("id", 2.0),
         ("name", 1.5),
         ("data_testid", 2.0),
+        ("data_qa", 2.0),
         ("aria_label", 1.5),
         ("type", 1.0),
         ("placeholder", 1.0),
@@ -201,7 +202,7 @@ def rank_candidates(
             "element_text": candidate.get("text", "")[:100],
             "element_attributes": {
                 k: candidate.get(k, "")
-                for k in ["id", "class_str", "name", "type", "aria_label", "data_testid"]
+                for k in ["id", "class_str", "name", "type", "aria_label", "data_testid", "data_qa"]
             },
             "_features": candidate,
         })

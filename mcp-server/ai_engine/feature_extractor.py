@@ -36,6 +36,7 @@ def extract_features_from_selector(selector: str) -> Dict[str, Any]:
         "aria_label": "",
         "role": "",
         "data_testid": "",
+        "data_qa": "",
         "dom_path": selector,
         "is_interactive": False,
     }
@@ -100,6 +101,8 @@ def extract_features_from_selector(selector: str) -> Dict[str, Any]:
             features["aria_label"] = attr_value
         elif attr_name in ("data_testid", "data-testid"):
             features["data_testid"] = attr_value
+        elif attr_name in ("data_qa", "data-qa"):
+            features["data_qa"] = attr_value
         elif attr_name == "role":
             features["role"] = attr_value
 
@@ -146,6 +149,7 @@ def extract_features_from_element(element: Tag, dom_path: str = "") -> Dict[str,
         "aria_label": attrs.get("aria-label", ""),
         "role": attrs.get("role", ""),
         "data_testid": attrs.get("data-testid", ""),
+        "data_qa": attrs.get("data-qa", ""),
         "href": attrs.get("href", ""),
         "value": attrs.get("value", ""),
         "dom_path": dom_path,
@@ -157,10 +161,12 @@ def extract_features_from_element(element: Tag, dom_path: str = "") -> Dict[str,
 def build_locator_from_element(features: Dict[str, Any]) -> str:
     """
     Generate the best Playwright CSS locator from element features.
-    Priority: data-testid > id > aria-label > name+type > class
+    Priority: data-testid > data-qa > id > aria-label > name+type > class
     """
     if features.get("data_testid"):
         return f'[data-testid="{features["data_testid"]}"]'
+    if features.get("data_qa"):
+        return f'[data-qa="{features["data_qa"]}"]'
     if features.get("id"):
         return f'#{features["id"]}'
     if features.get("aria_label"):
