@@ -14,7 +14,7 @@ logger = logging.getLogger("GhostConfig")
 
 
 class MCPServerConfig(BaseModel):
-    url: str = "http://localhost:8000"
+    url: str = "https://ghost-healer-brain.onrender.com"
     timeout: int = 30
     confidence_threshold: float = 0.5    # Minimum score (0–1) to trust a heal
 

@@ -17,7 +17,7 @@ public class GhostPlaywright {
     private static final String BRAIN_URL =
         System.getenv().getOrDefault(
             "GHOST_BRAIN_URL",
-            "http://localhost:8000"
+            "https://ghost-healer-brain.onrender.com"
         );
     private static final double CONFIDENCE_THRESHOLD = 0.5;
     private static final int MAX_RETRIES = 3;
