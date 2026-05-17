@@ -47,6 +47,13 @@ function findCallerFile() {
   return { file: null, line: 0 };
 }
 
+function getISTTimestamp() {
+    const date = new Date();
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(date.getTime() + istOffset);
+    return istDate.toISOString().replace('Z', '+05:30');
+}
+
 function writeToReport(oldSelector, newSelector, action, fileInfo, url, confidence) {
     const reportDir = path.join(process.cwd(), 'reports', 'ghost');
     fs.mkdirSync(reportDir, { recursive: true });
@@ -56,7 +63,7 @@ function writeToReport(oldSelector, newSelector, action, fileInfo, url, confiden
         try { data = JSON.parse(fs.readFileSync(reportFile, 'utf8')); } catch(e){}
     }
     data.push({
-        timestamp: new Date().toISOString(),
+        timestamp: getISTTimestamp(),
         framework: "playwright",
         language: "javascript/typescript",
         file: fileInfo.file,

@@ -39,6 +39,13 @@ function findCallerFile(): { file: string | null; line: number } {
   return { file: null, line: 0 };
 }
 
+function getISTTimestamp(): string {
+  const date = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(date.getTime() + istOffset);
+  return istDate.toISOString().replace('Z', '+05:30');
+}
+
 function writeToReport(
   oldSelector: string,
   newSelector: string,
@@ -57,7 +64,7 @@ function writeToReport(
     } catch (e) {}
   }
   data.push({
-    timestamp: new Date().toISOString(),
+    timestamp: getISTTimestamp(),
     framework: 'playwright-ts',
     language: 'typescript',
     file: fileInfo.file,
