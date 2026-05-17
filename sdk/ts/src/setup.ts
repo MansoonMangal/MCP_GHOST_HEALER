@@ -44,7 +44,8 @@ function writeToReport(
   newSelector: string,
   action: string,
   fileInfo: { file: string | null; line: number },
-  url: string
+  url: string,
+  confidence: number
 ) {
   const reportDir = path.join(process.cwd(), 'reports', 'ghost');
   fs.mkdirSync(reportDir, { recursive: true });
@@ -64,7 +65,7 @@ function writeToReport(
     action: action,
     old_locator: oldSelector,
     suggested_locator: newSelector,
-    confidence: 0.0,
+    confidence: confidence,
     page_url: url,
   });
   fs.writeFileSync(reportFile, JSON.stringify(data, null, 2), 'utf8');
@@ -79,7 +80,7 @@ async function consultBrain(
   action: string,
   domSnapshot: string,
   pageUrl: string
-): Promise<string | null> {
+): Promise<{ healed_locator: string; confidence: number } | null> {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       const resp = await fetch(`${BRAIN_URL}/api/heal-locator`, {
@@ -110,7 +111,7 @@ async function consultBrain(
           `[GHOST] Healed '${selector}' → '${healed}' ` +
             `(confidence=${(confidence * 100).toFixed(1)}%)`
         );
-        return healed;
+        return { healed_locator: healed, confidence };
       }
       return null;
     } catch {
@@ -152,11 +153,12 @@ function makeHealedPage(original: Function, action: string): Function {
         Promise.resolve(page.url()),
       ]);
 
-      const healed = await consultBrain(selector, action, dom, url);
-      if (healed) {
-        console.log(`[GHOST] Retrying with healed locator: ${healed}`);
-        writeToReport(selector, healed, action, findCallerFile(), url);
-        return await original.call(this, healed, ...args);
+      const result = await consultBrain(selector, action, dom, url);
+      if (result) {
+        const { healed_locator, confidence } = result;
+        console.log(`[GHOST] Retrying with healed locator: ${healed_locator}`);
+        writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence);
+        return await original.call(this, healed_locator, ...args);
       }
       return await original.call(this, selector, ...args);
     }
@@ -199,12 +201,13 @@ function makeHealedLocator(original: Function, action: string): Function {
         Promise.resolve(page.url()),
       ]);
 
-      const healed = await consultBrain(selector, action, dom, url);
-      if (healed) {
-        console.log(`[GHOST] Retrying locator with healed selector: ${healed}`);
-        writeToReport(selector, healed, action, findCallerFile(), url);
+      const result = await consultBrain(selector, action, dom, url);
+      if (result) {
+        const { healed_locator, confidence } = result;
+        console.log(`[GHOST] Retrying locator with healed selector: ${healed_locator}`);
+        writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence);
         
-        const healedLocator = page.locator(healed);
+        const healedLocator = page.locator(healed_locator);
         return await (healedLocator as any)[original.name || action].apply(healedLocator, args);
       }
       return await original.apply(this, args);

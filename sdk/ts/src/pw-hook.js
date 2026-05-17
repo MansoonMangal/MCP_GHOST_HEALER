@@ -47,7 +47,7 @@ function findCallerFile() {
   return { file: null, line: 0 };
 }
 
-function writeToReport(oldSelector, newSelector, action, fileInfo, url) {
+function writeToReport(oldSelector, newSelector, action, fileInfo, url, confidence) {
     const reportDir = path.join(process.cwd(), 'reports', 'ghost');
     fs.mkdirSync(reportDir, { recursive: true });
     const reportFile = path.join(reportDir, 'suggested-fixes.json');
@@ -64,7 +64,7 @@ function writeToReport(oldSelector, newSelector, action, fileInfo, url) {
         action: action,
         old_locator: oldSelector,
         suggested_locator: newSelector,
-        confidence: 0.0,
+        confidence: confidence || 0.0,
         page_url: url
     });
     fs.writeFileSync(reportFile, JSON.stringify(data, null, 2), 'utf8');
@@ -85,7 +85,7 @@ async function consultBrain(selector, action, domSnapshot, pageUrl) {
       const data = await resp.json();
       if (data.healed_locator && data.confidence >= CONFIDENCE_THRESHOLD) {
         console.log(`\n[GHOST] Healed '${selector}' → '${data.healed_locator}' (${(data.confidence * 100).toFixed(1)}%)`);
-        return data.healed_locator;
+        return { healed_locator: data.healed_locator, confidence: data.confidence };
       }
       return null;
     } catch {
@@ -120,10 +120,11 @@ function makeHealed(original, action) {
       try {
         const dom = await this.content();
         const url = await this.url();
-        const healed = await consultBrain(selector, action, dom, url);
-        if (healed) {
-          writeToReport(selector, healed, action, findCallerFile(), url);
-          return await original.apply(this, [healed, ...args]);
+        const result = await consultBrain(selector, action, dom, url);
+        if (result) {
+          const { healed_locator, confidence } = result;
+          writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence);
+          return await original.apply(this, [healed_locator, ...args]);
         }
       } catch (brainErr) {
         console.error('[GHOST] Brain error:', brainErr);
@@ -171,10 +172,11 @@ function patchLocatorPrototype(locator) {
                     try {
                         const dom = await page.content();
                         const url = await page.url();
-                        const healed = await consultBrain(selector, action, dom, url);
-                        if (healed) {
-                            writeToReport(selector, healed, action, findCallerFile(), url);
-                            const healedLocator = page.locator(healed);
+                        const result = await consultBrain(selector, action, dom, url);
+                        if (result) {
+                            const { healed_locator, confidence } = result;
+                            writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence);
+                            const healedLocator = page.locator(healed_locator);
                             return await healedLocator[method].apply(healedLocator, args);
                         }
                     } catch (brainErr) {
