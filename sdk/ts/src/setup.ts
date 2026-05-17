@@ -46,6 +46,20 @@ function getISTTimestamp(): string {
   return istDate.toISOString().replace('Z', '+05:30');
 }
 
+function findWorkspaceRoot(): string {
+  let currentDir = process.cwd();
+  while (true) {
+    if (fs.existsSync(path.join(currentDir, 'ghost.yaml')) || fs.existsSync(path.join(currentDir, '.git'))) {
+      return currentDir;
+    }
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      return path.resolve(__dirname, '../../..');
+    }
+    currentDir = parentDir;
+  }
+}
+
 function writeToReport(
   oldSelector: string,
   newSelector: string,
@@ -54,7 +68,7 @@ function writeToReport(
   url: string,
   confidence: number
 ) {
-  const reportDir = path.join(process.cwd(), 'reports', 'ghost');
+  const reportDir = path.join(findWorkspaceRoot(), 'reports', 'ghost');
   fs.mkdirSync(reportDir, { recursive: true });
   const reportFile = path.join(reportDir, 'suggested-fixes.json');
   let data: any[] = [];
