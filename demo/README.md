@@ -1,123 +1,42 @@
-# 👻 Universal Ghost Healer: Multi-Language Integration & Execution Guide
+# 👻 Universal Ghost Healer: Multi-Language & Tool Integration Cheatsheet
 
-Welcome to the ultimate guide for the **Universal Ghost Healer AI Self-Healing Platform**. This document contains complete, step-by-step instructions, installation commands, code snippets, and configuration steps required to integrate and run the self-healing framework in **any** enterprise Playwright or Selenium automation suite across **Python, Java, TypeScript, and JavaScript**.
-
----
-
-## 🧠 Architectural Overview
-
-Ghost Healer operates dynamically under the hood to completely eliminate locator maintenance overhead:
-
-```mermaid
-graph TD
-    A[Locator Fails during Test] --> B[Ghost Interceptor Catches Failure]
-    B --> C[Captures DOM Snapshot & URL]
-    C --> D[Consults AI Brain implicitly via Render]
-    D --> E{Brain Matches Element?}
-    E -- Yes --> F[Bypasses Failure & Resumes Action]
-    E -- No --> G[Throws Original Exception]
-    F --> H[SourceHealer Patches Test File permanently on disk]
-    F --> I[Writes suggested-fixes.json & session log]
-```
-
-- **Zero Test Logic Refactoring**: Your test files, POM (Page Object Model) layers, and assertions remain completely unchanged.
-- **Implicit Connectivity**: Out of the box, all SDKs and adapters implicitly query the high-performance live Render Brain (`https://ghost-healer-brain.onrender.com`).
-- **Standardized Reports**: Automatically creates and updates `reports/ghost/suggested-fixes.json` under your workspace root directory.
+Welcome to the **Practical Integration Report** for the **Universal Ghost Healer AI Self-Healing Platform**. This document acts as an immediate copy-paste cheatsheet to integrate, configure, and execute the self-healing framework across all **8 combinations** of the two leading automation tools (**Playwright & Selenium**) and the four core programming languages (**TypeScript, JavaScript, Python, and Java**).
 
 ---
 
-## 🐍 1. Python Integration (Playwright & Selenium)
+## ⚙️ Core Configuration (`ghost.yaml`)
 
-### 📦 SDK Installation
-Install the core python package:
-```bash
-# To install locally from the project root:
-pip install -e .
+Regardless of the tool or language used, the framework is configured via a single centralized configuration file (`ghost.yaml`) placed in your project's workspace root:
 
-# Or to install via PyPI (if published):
-pip install ghost-healer
+```yaml
+# ghost.yaml
+mcp_server:
+  url: "https://ghost-healer-brain.onrender.com"  # Live Centralized AI Brain URL
+  confidence_threshold: -1.0                      # -1.0 dynamically auto-heals all decisions
+
+healing:
+  auto_patch: true                                # Dynamically patches test source files on disk
+  max_retries: 3
+  cooldown_ms: 1000
 ```
 
 ---
 
-### 🎭 A. Python + Playwright Integration
-The Python Playwright adapter integrates automatically via `pytest`. No code changes are required in your scripts!
+## 🚀 The 8 Integration Combinations
 
-#### Code Example (`test_demo.py`):
-```python
-def test_saucedemo(page):
-    page.goto("https://www.saucedemo.com/")
-    
-    # Intentionally broken locators will heal dynamically
-    page.locator("#user-name-WRONG").fill("standard_user")
-    page.locator("#password-WRONG").fill("secret_sauce")
-    page.locator("#login-button-WRONG").click()
-    
-    assert "inventory" in page.url
-```
+### 🟦 1. Playwright + TypeScript (`playwright-ts`)
 
-#### Run command:
-```bash
-pytest demo/playwright-python/test_demo.py -v -s
-```
+#### 📂 File & Line to Change
+* **Option A (Zero-Code Require Hook - Recommended)**: Simply prepend Node's require hook to your terminal execution command. No code edits are required!
+* **Option B (Configuration Integration)**: Modify [playwright.config.ts](file:///c:/Users/mansoon.mangal.ASCENDION/OneDrive%20-%20ascendion/Desktop/API%20-%20My%20Work/MY%20PW_TS%20Project/playwright.config.ts) and add the global setup hook resolution:
 
----
-
-### 🌐 B. Python + Selenium Integration
-Simply import the `protect_driver` utility and wrap your selenium driver instance immediately after creation.
-
-#### Code Example (`test_demo.py`):
-```python
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from ghost_healer.adapters.selenium import protect_driver
-
-options = webdriver.ChromeOptions()
-options.add_argument("--no-sandbox")
-driver = webdriver.Chrome(options=options)
-
-# 👻 ONE-LINE ACTIVATION: Intercepts all find_element actions
-protect_driver(driver)
-
-driver.get("https://www.saucedemo.com/")
-driver.find_element(By.CSS_SELECTOR, "#user-name-WRONG").send_keys("standard_user")
-driver.find_element(By.CSS_SELECTOR, "#password-WRONG").send_keys("secret_sauce")
-driver.find_element(By.CSS_SELECTOR, "#login-button-WRONG").click()
-
-driver.quit()
-```
-
-#### Run command:
-```bash
-python demo/selenium-python/test_demo.py
-```
-
----
-
-## 🟦 2. TS/JS Integration (Playwright & Selenium)
-
-### 📦 SDK Installation
-Install the TypeScript / JavaScript SDK npm package:
-```bash
-# To install locally from the project:
-npm install ../../sdk/ts
-
-# Or to install via NPM:
-npm install ghost-healer-ts
-```
-
----
-
-### 🎭 A. TS/JS + Playwright Integration
-Simply add a single line to your `playwright.config.ts` or `playwright.config.js` to register the global setup hook.
-
-#### Configuration (`playwright.config.ts`):
 ```typescript
+// playwright.config.ts
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  // 👻 ONE-LINE ACTIVATION: Patches Playwright Page & Locator prototypes globally
-  globalSetup: require.resolve('ghost-healer-ts/setup'),
+  // 👻 One-Line Prototype Injector
+  globalSetup: require.resolve('ghost-healer-ts/dist/setup'),
   use: {
     headless: false,
     screenshot: 'only-on-failure',
@@ -125,79 +44,71 @@ export default defineConfig({
 });
 ```
 
-#### Code Example (`test_demo.spec.ts`):
-```typescript
-import { test, expect } from '@playwright/test';
+#### 💻 Execution Command
+```bash
+npx cross-env NODE_OPTIONS="-r ghost-healer-ts/src/pw-hook.js" GHOST_CONFIG="ghost.yaml" npx playwright test tests/ui/e2e_checkout.spec.ts --project=chromium --headed
+```
 
-test('locator API healing works silently', async ({ page }) => {
-  await page.goto('https://www.saucedemo.com/');
-  
-  await page.locator('#user-name-broken').fill('standard_user');
-  await page.locator('#password-broken').fill('secret_sauce');
-  await page.locator('#login-button-broken').click();
-  
-  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');
+---
+
+### 🟨 2. Playwright + JavaScript (`pw-js`)
+
+#### 📂 File & Line to Change
+* Prepend Node's require hook in your test script within `package.json`, or register the hook inside `playwright.config.js`:
+
+```javascript
+// playwright.config.js
+const { defineConfig } = require('@playwright/test');
+
+module.exports = defineConfig({
+  // 👻 Global prototype interceptor
+  globalSetup: require.resolve('ghost-healer-ts/dist/setup'),
+  use: {
+    headless: false,
+  },
 });
 ```
 
-#### Run command:
+#### 💻 Execution Command
 ```bash
-cd demo/playwright-ts
-npm install
-npx playwright test
+npx cross-env NODE_OPTIONS="-r ghost-healer-ts/src/pw-hook.js" GHOST_CONFIG="ghost.yaml" npx playwright test
 ```
 
 ---
 
-### 🌐 B. TS/JS + Selenium Integration
-Register the self-healing package via the `--require` flag in your test runner command (Jest, Mocha, etc.).
+### 🐍 3. Playwright + Python (`playwright-python`)
 
-#### Run command:
+#### 📂 File & Line to Change
+Add a standard pytest fixture inside your `conftest.py` file to automatically wrap page objects with self-healing interceptors:
+
+```python
+# conftest.py
+import pytest
+from ghost_healer.adapters.playwright import protect_page
+
+@pytest.fixture
+def page(context):
+    raw_page = context.new_page()
+    # 👻 Dynamic Interceptor Activation
+    protected_page = protect_page(raw_page)
+    yield protected_page
+    protected_page.close()
+```
+
+#### 💻 Execution Command
 ```bash
-# TS/JS Selenium execution using Mocha:
-cd demo/selenium-ts
-npm install
-npx ts-mocha --require ghost-healer-ts/selenium-setup test_demo.spec.ts
+pytest --tb=short -v -s
 ```
 
 ---
 
-## ☕ 3. Java Integration (Playwright & Selenium)
+### ☕ 4. Playwright + Java (`pw-java`)
 
-### 📦 Drop-In SDK Setup
-To integrate with any Maven or Gradle corporate Java project:
-1. Copy the three core classes from `ghost_healer/framework/java/` (`GhostPlaywright.java`, `GhostHealerExtension.java`, `GhostDriver.java`) and drop them under the `com.ghosthealer.core` package in your project's `src/main/java` directory.
-2. Add the following key dependencies to your `pom.xml`:
-```xml
-<dependencies>
-  <!-- Playwright Java -->
-  <dependency>
-    <groupId>com.microsoft.playwright</groupId>
-    <artifactId>playwright</artifactId>
-    <version>1.44.0</version>
-  </dependency>
-  <!-- Selenium Java -->
-  <dependency>
-    <groupId>org.seleniumhq.selenium</groupId>
-    <artifactId>selenium-java</artifactId>
-    <version>4.21.0</version>
-  </dependency>
-  <!-- Gson (for HTTP parsing) -->
-  <dependency>
-    <groupId>com.google.code.gson</groupId>
-    <artifactId>gson</artifactId>
-    <version>2.10.1</version>
-  </dependency>
-</dependencies>
-```
+#### 📂 File & Line to Change
+Locate your JUnit or TestNG base setup file (e.g. `BaseTest.java`) where the `Page` object is instantiated:
 
----
-
-### 🎭 A. Java + Playwright Integration
-Simply wrap the native Playwright `Page` instance in the base test setup using `GhostPlaywright.protect()`.
-
-#### Code Example (`PlaywrightJavaDemo.java`):
 ```java
+// src/test/java/demo/PlaywrightJavaDemo.java
 package demo;
 
 import com.microsoft.playwright.*;
@@ -213,33 +124,94 @@ public class PlaywrightJavaDemo {
         Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
         BrowserContext context = browser.newContext();
         
-        // 👻 ONE-LINE ACTIVATION: Wraps page with a self-healing proxy
+        // 👻 ONE-LINE ACTIVATION: Wraps page with a self-healing dynamic proxy
         page = GhostPlaywright.protect(context.newPage());
-    }
-
-    @Test
-    void testPlaywrightHealing() {
-        page.navigate("https://www.saucedemo.com/");
-        page.locator("#user-name-WRONG").fill("standard_user");
-        page.locator("#password-WRONG").fill("secret_sauce");
-        page.locator("#login-button-WRONG").click();
     }
 }
 ```
 
-#### Run command:
+#### 💻 Execution Command
 ```bash
-cd demo/pw-java
 mvn clean test -Dtest=PlaywrightJavaDemo
 ```
 
 ---
 
-### 🌐 B. Java + Selenium Integration
-Extend your selenium BaseTest with `GhostHealerExtension.class` and annotate the driver field with `@GhostDriver`.
+### 🟦 5. Selenium + TypeScript (`selenium-ts`)
 
-#### Code Example (`SeleniumJavaDemo.java`):
+#### 📂 File & Line to Change
+Inject the compiled selenium setup file globally into your test runner environment. In your terminal or `package.json` mocha command, append the `--require` flag:
+
+```json
+// package.json
+"scripts": {
+  "test:selenium": "cross-env GHOST_CONFIG=\"ghost.yaml\" ts-mocha --require ghost-healer-ts/selenium-setup tests/**/*.spec.ts"
+}
+```
+
+#### 💻 Execution Command
+```bash
+npm run test:selenium
+```
+
+---
+
+### 🟨 6. Selenium + JavaScript (`selenium-js`)
+
+#### 📂 File & Line to Change
+Similar to TypeScript, register the JavaScript Selenium setup script in your runner (Mocha/Jest) execution scripts in `package.json`:
+
+```json
+// package.json
+"scripts": {
+  "test:selenium-js": "cross-env GHOST_CONFIG=\"ghost.yaml\" mocha --require ghost-healer-ts/selenium-setup tests/**/*.spec.js"
+}
+```
+
+#### 💻 Execution Command
+```bash
+npm run test:selenium-js
+```
+
+---
+
+### 🐍 7. Selenium + Python (`selenium-python`)
+
+#### 📂 File & Line to Change
+Find your selenium driver instantiation class or fixtures (e.g., `conftest.py` or `webdriver_factory.py`) and wrap the webdriver instance immediately after creation:
+
+```python
+# conftest.py or test_file.py
+import pytest
+from selenium import webdriver
+from ghost_healer.adapters.selenium import protect_driver
+
+@pytest.fixture
+def driver():
+    options = webdriver.ChromeOptions()
+    raw_driver = webdriver.Chrome(options=options)
+    
+    # 👻 ONE-LINE ACTIVATION: Intercepts all driver.find_element calls
+    protect_driver(raw_driver)
+    
+    yield raw_driver
+    raw_driver.quit()
+```
+
+#### 💻 Execution Command
+```bash
+pytest tests/selenium_suite.py
+```
+
+---
+
+### ☕ 8. Selenium + Java (`selenium-java`)
+
+#### 📂 File & Line to Change
+Add the JUnit 5 healing extension (`@ExtendWith(GhostHealerExtension.class)`) to your Selenium test classes, and annotate the Selenium `WebDriver` field with `@GhostDriver`:
+
 ```java
+// src/test/java/demo/SeleniumJavaDemo.java
 package demo;
 
 import com.ghosthealer.core.*;
@@ -248,66 +220,30 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 
-@ExtendWith(GhostHealerExtension.class) // 👻 ACTIVATION STEP 1
+@ExtendWith(GhostHealerExtension.class) // 👻 ACTIVATION STEP 1: Registers callback listeners
 public class SeleniumJavaDemo {
 
-    @GhostDriver // 👻 ACTIVATION STEP 2
+    @GhostDriver // 👻 ACTIVATION STEP 2: Injects a dynamic self-healing proxy driver
     protected WebDriver driver;
 
     @BeforeEach
     void setUp() {
         driver = new ChromeDriver();
     }
-
-    @Test
-    void testSeleniumHealing() {
-        driver.get("https://www.saucedemo.com/");
-        driver.findElement(By.id("user-name-WRONG")).sendKeys("standard_user");
-        driver.findElement(By.id("password-WRONG")).sendKeys("secret_sauce");
-        driver.findElement(By.id("login-button-WRONG")).click();
-    }
-
-    @AfterEach
-    void tearDown() {
-        if (driver != null) driver.quit();
-    }
 }
 ```
 
-#### Run command:
+#### 💻 Execution Command
 ```bash
-cd demo/pw-java
 mvn clean test -Dtest=SeleniumJavaDemo
 ```
 
 ---
 
-## 📊 Reports & Logs Output Structure
+## 📊 Self-Healing Output Logs & Reports
 
-After executing any self-healing automation run, Ghost Healer implicitly generates logs under the workspace root directory:
+Whenever a locator is dynamically healed by Ghost Healer, the framework logs it in the following places:
+1. **Audit Trail JSON** (`reports/ghost/suggested-fixes.json`): A clean, human-readable list showing exactly which broken selector failed, what exact healed locator replaced it, its confidence score, and the exact Page Object source file/line where it is defined.
+2. **Dynamic Patches**: The source code is updated instantly in place, permanently resolving the maintenance overhead.
 
-### 1. Suggested Fixes Audit Report (`reports/ghost/suggested-fixes.json`)
-Consolidated, beautiful JSON records outlining healed locator events:
-```json
-[
-  {
-    "timestamp": "2026-05-17T22:00:15.123+05:30",
-    "framework": "playwright-ts",
-    "language": "typescript",
-    "file": "c:/Users/.../demo/playwright-ts/test_demo.spec.ts",
-    "line": 40,
-    "action": "fill",
-    "old_locator": "#user-name-broken",
-    "suggested_locator": "#user-name",
-    "confidence": 0.985,
-    "page_url": "https://www.saucedemo.com/"
-  }
-]
-```
-
-### 2. Active Session Logs (`reports/logs/mcp_server.log`)
-Traces of AI execution context, request parameters, DOM parsing durations, and element similarities score matrices.
-
----
-
-**Built to heal. Designed to scale. Stop fixing locators permanently!** 🛡️🌍🏆✨
+🛡️ **Stop fixing locators manually. Deploy Ghost Healer and let AI auto-heal your suites!** 🛡️

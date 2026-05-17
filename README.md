@@ -2,13 +2,41 @@
 
 ### **The world's first language-agnostic, zero-refactor AI self-healing automation platform.**
 
-Ghost Healer is a revolutionary, enterprise-ready automation engine that dynamically intercepts locator failures during test execution, consults a centralized AI Brain to identify the corrected elements, and **permanently rewrites your source code** on disk so you never have to maintain or manually repair the same locator again.
+> [!NOTE]
+> **Complete Implementation Steps**: If you want to know the complete, step-by-step instructions on how to implement and integrate Ghost Healer, please see the detailed [demo/README.md](file:///c:/Users/mansoon.mangal.ASCENDION/OneDrive%20-%20ascendion/Desktop/API%20-%20My%20Work/MCP_CLIENT_SERVER_PROJECT/demo/README.md).
+
+---
+
+## ⚡ Why We Developed Ghost Healer (The Problem)
+
+Modern web development moves at supersonic speeds. Elements change classes, text contents are rephrased, and HTML structures are reorganized daily. For Quality Engineering and SDET teams, this introduces three critical challenges:
+
+> [!WARNING]
+> ### 1. The Maintenance Vortex
+> QA engineers spend **up to 40% of their weekly capacity** manually triaging failed CI/CD pipelines, only to realize the failure was caused by a changed class name, ID, or structure rather than a real application bug.
+> 
+> ### 2. Test Suite Flakiness
+> Brittle XPath and CSS locators cause builds to randomly fail. A flake in one pipeline delays deployment, reduces developer trust in automation, and blocks continuous delivery.
+> 
+> ### 3. Cross-Language Fragmentation
+> Most automated self-healing solutions are tool-specific or language-specific. A company using Python Playwright for API testing, TypeScript for web UI, and Java Selenium for legacy flows has to configure three separate healing solutions, none of which talk to each other.
+
+---
+
+## 💡 How Ghost Healer Makes Things Easy (The Solution)
+
+Ghost Healer is designed from the ground up to solve these maintenance and flakiness pain points seamlessly:
+
+* **Zero Test Refactoring**: You do not need to change a single line of test code, assertions, or your Page Object Model (POM) pattern. It intercepts failures under the hood.
+* **Auto-Patching to Local Disk**: It doesn't just bypass the issue during execution; it traces the execution stack, finds the exact test source file (`.py`, `.ts`, `.java`), and **permanently overwrites the broken locator string on disk**.
+* **Language & Framework Parity**: A single configuration and unified AI Brain interface support all **8 core combinations** of **Playwright & Selenium** across **Python, Java, TypeScript, and JavaScript**.
+* **Centralized Reporting**: Every single heal action is cataloged in a beautiful JSON report [reports/ghost/suggested-fixes.json](file:///c:/Users/mansoon.mangal.ASCENDION/OneDrive%20-%20ascendion/Desktop/API%20-%20My%20Work/MCP_CLIENT_SERVER_PROJECT/reports/ghost/suggested-fixes.json), creating a transparent audit trail for your engineering teams.
 
 ---
 
 ## 🎨 System Architecture & Project Blueprint
 
-Here is the architectural overview of how Ghost Healer's cross-language adapters, source-healing engine, and AI Brain communicate dynamically:
+Ghost Healer integrates a lightweight local adapter system with a high-performance centralized AI Brain:
 
 ```mermaid
 graph TD
@@ -47,6 +75,39 @@ graph TD
 
 ---
 
+## 🛠️ Complete Framework Architecture in Detail
+
+The Ghost Healer platform operates across four primary integrated architectural layers:
+
+### 1. The Interception Layer (Language & Driver Adapters)
+Rather than introducing custom locator subclasses or requiring test re-authoring, Ghost Healer integrates directly at the runtime or driver prototype level:
+* **Python Interceptor (`ghost_healer/adapters/`)**: Hooked using dynamic overrides of standard Playwright actions (like `.locator()`, `.click()`, `.fill()`) and Selenium's standard `WebDriver.find_element` function. If standard execution triggers a `NoSuchElementException` or `TimeoutError`, the failure event is seamlessly caught by Ghost Healer.
+* **TypeScript & JavaScript Interceptor (`sdk/ts/src/`)**: Built on JavaScript runtime prototype patching and Proxy traps. Overrides the prototype methods of Playwright's `Page` and `Locator` objects, and overrides the main class methods of Selenium's `WebDriver` and `WebElement` classes, ensuring 100% zero-code-change enablement.
+* **Java Interceptor (`ghost_healer/framework/java/`)**: Implemented using Java's standard reflection framework and `java.lang.reflect.Proxy` dynamic proxy classes. Playwright's native interface is wrapped in a dynamic handler, while Selenium tests utilize JUnit 5 extensions (`GhostHealerExtension`) combined with `@GhostDriver` injection hooks.
+
+### 2. Context Capture & Diagnostic Layer
+When an adapter intercepts a locator error:
+1. It immediately halts the test exception from reaching the runner.
+2. It takes a complete **DOM Snapshot** of the active browser viewport and packages page state attributes (e.g., current URL, title, viewport dimensions).
+3. It parses the **runtime execution stack trace** to isolate the absolute path and exact line number of the user code file containing the broken locator.
+4. It compiles this payload (failed locator, intended action, target state, stack coordinates) into a standardized JSON API request.
+
+### 3. Centralized AI Brain & Matcher Engine
+The payload is delivered to the remote high-performance **Render AI Brain** via secure HTTP calls:
+* The brain ingests the full DOM structure and decodes the target locator.
+* **Semantic & Heuristic Alignment**: Evaluates target candidate elements inside the DOM tree using an advanced similarity scoring pipeline. It assesses text relevance, class name/ID similarities, position in the element tree hierarchy, sibling relationship structures, and A/B test styling profiles.
+* **Smart Matching Decision**: Elements with matching scores above the user-defined threshold (or resolved dynamically) are chosen, and the newly calculated CSS/XPath locator is returned to the runner client.
+
+### 4. SourceHealer & Code Autopatching Engine
+Once a successful replacement locator is identified with high confidence:
+1. The client-side `SourceHealer` receives the healed locator and activates.
+2. It parses the stack trace to open the precise `.py`, `.ts`, `.js`, or `.java` test/POM script on your local machine.
+3. Using regular expression patterns, it locates the exact line and replaces the old broken selector string with the newly resolved one, **saving the patched file in-place**.
+4. The healed locator is written to [reports/ghost/suggested-fixes.json](file:///c:/Users/mansoon.mangal.ASCENDION/OneDrive%20-%20ascendion/Desktop/API%20-%20My%20Work/MCP_CLIENT_SERVER_PROJECT/reports/ghost/suggested-fixes.json) as a transparent audit record.
+5. The adapter passes the resolved locator back to the running driver session, executing the step and continuing the test suite seamlessly.
+
+---
+
 ## 📂 Project Structure Blueprint
 
 The repository is modularly organized to support standalone packaging and zero-configuration setups:
@@ -79,18 +140,9 @@ MCP_CLIENT_SERVER_PROJECT/
 
 ---
 
-## ⚡ Key Features
-
-- **Zero-Refactor Code Integration**: Integrates directly into your existing corporate Page Object Model (POM) frameworks. Your test assertions, actions (`click()`, `fill()`, `sendKeys()`), and page setups remain untouched.
-- **Implicit Live AI Brain**: All SDKs and adapters connect implicitly to the live Render AI Brain (`https://ghost-healer-brain.onrender.com`) out of the box. No manual environment variables or local databases are required!
-- **Dynamic Source Patching**: Captures active stack traces on failure, walks the file tree, locates the target `.py`, `.ts`, or `.java` source file on your local machine, and **permanently rewrites** the locator string.
-- **Unified Workspace Reporting**: Beautifully structures suggested repairs and detailed latency, confidence, and execution traces under `<workspace_root>/reports/ghost/suggested-fixes.json`.
-
----
-
 ## 🚀 Step-by-Step Quick Start Guide
 
-The beauty of Ghost Healer is the minimal setup required.
+The beauty of Ghost Healer is the minimal setup required. For full instructions across all languages and frameworks, check out the [demo/README.md](file:///c:/Users/mansoon.mangal.ASCENDION/OneDrive%20-%20ascendion/Desktop/API%20-%20My%20Work/MCP_CLIENT_SERVER_PROJECT/demo/README.md).
 
 ### 🐍 Python (Playwright & Selenium)
 Install the package from the project root:
@@ -143,32 +195,18 @@ npm install sdk/ts
 
 ---
 
-## 📊 Enterprise Reporting Structure
+## 🚀 Upcoming Premium Features & Roadmap
 
-After executing any automation run, Ghost Healer implicitly generates logs under the workspace root directory:
+We are constantly expanding the capabilities of the Ghost Healer platform. Here is what is arriving in the next major releases:
 
-### 1. Suggested Fixes Audit Report (`reports/ghost/suggested-fixes.json`)
-Consolidated, beautiful JSON records outlining healed locator events:
-```json
-[
-  {
-    "timestamp": "2026-05-17T22:00:15.123+05:30",
-    "framework": "playwright-ts",
-    "language": "typescript",
-    "file": "c:/Users/.../demo/playwright-ts/test_demo.spec.ts",
-    "line": 40,
-    "action": "fill",
-    "old_locator": "#user-name-broken",
-    "suggested_locator": "#user-name",
-    "confidence": 0.985,
-    "page_url": "https://www.saucedemo.com/"
-  }
-]
-```
-
-### 2. Active Session Logs (`reports/logs/mcp_server.log`)
-Traces of AI execution context, request parameters, DOM parsing durations, and element similarities score matrices.
+| Feature | Description | Status | Target |
+| :--- | :--- | :--- | :--- |
+| **🎨 Multi-Modal Visual Healing** | Utilizes Computer Vision (CV) and visual pixel comparison to find elements when the underlying HTML DOM structure is completely rebuilt. | `In Development` | Q3 2026 |
+| **💡 Auto-Generating Page Objects** | Point Ghost Healer to a URL or component and let it automatically generate structured, type-safe Page Object Model classes. | `Prototyping` | Q4 2026 |
+| **📈 Dynamic Visual Dashboard** | A local and web-based dashboard mapping heal events, confidence scores over time, latency, and cumulative engineering hours saved. | `Planning` | Q4 2026 |
+| **📱 Self-Healing Mobile Suites** | Extending proxy driver hooks to support Appium and Flutter mobile test suites on iOS & Android. | `Researching` | Q1 2027 |
+| **🔗 IDE Plugins (VS Code & IntelliJ)** | Extensions showing auto-patches right inside your code editor, letting developers accept/reject healed locators with one click. | `Planning` | Q2 2027 |
 
 ---
 
-**Built to heal. Designed to scale. Stop fixing locators permanently!** 🛡️🌍🏆✨
+🛡️ **Stop fixing locators manually. Deploy Ghost Healer and let AI auto-heal your suites!** 🛡️
