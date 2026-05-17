@@ -76,7 +76,10 @@ export class GhostLocator {
 
   async waitForSelector(selector: string, options?: Parameters<Page['waitForSelector']>[1]) {
     return await this._healAndRetry(selector, 'wait', async (sel) => {
-      return await this.page.waitForSelector(sel, options);
+      return await this.page.waitForSelector(
+        sel,
+        options || {}
+      );
     });
   }
 

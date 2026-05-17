@@ -22,53 +22,63 @@ try {
 const BRAIN_URL = process.env.GHOST_BRAIN_URL || config.mcp_server.url;
 const CONFIDENCE_THRESHOLD = config.mcp_server.confidence_threshold;
 
-let isPatched = false;
 
-// ── Source Healer ──────────────────────────────────────────────────────────
+// ── Stack Parser & Reporter ────────────────────────────────────────────────
 function findCallerFile() {
   const err = new Error();
   const stack = err.stack;
-  if (!stack) return null;
+  if (!stack) return { file: null, line: 0 };
   const lines = stack.split('\n');
   for (const line of lines) {
     const match = line.match(/\((.*):(\d+):(\d+)\)/) || line.match(/at (.*):(\d+):(\d+)/);
     if (match) {
       const filePath = match[1];
+      const lineNo = parseInt(match[2], 10) || 0;
       const isInternal = filePath.includes('node_modules') || 
                         filePath.includes('pw-hook.js') || 
                         filePath.includes('setup.ts') ||
                         filePath.includes('GhostLocator');
       
       if (!isInternal && fs.existsSync(filePath)) {
-        return filePath;
+        return { file: filePath, line: lineNo };
       }
     }
   }
-  return null;
+  return { file: null, line: 0 };
 }
 
-function applySourcePatch(oldSelector, newSelector) {
-  const file = findCallerFile();
-  if (!file) return;
-  try {
-    const content = fs.readFileSync(file, 'utf8');
-    const escapedOld = oldSelector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const pattern = new RegExp(`(['"\`])${escapedOld}(['"\`])`, 'g');
-    if (pattern.test(content)) {
-      const newContent = content.replace(pattern, `$1${newSelector}$2`);
-      fs.writeFileSync(file, newContent, 'utf8');
-      console.log(`[GHOST] ✅ Permanently patched: ${path.basename(file)} ('${oldSelector}' -> '${newSelector}')`);
+function writeToReport(oldSelector, newSelector, action, fileInfo, url) {
+    const reportDir = path.join(process.cwd(), 'reports', 'ghost');
+    fs.mkdirSync(reportDir, { recursive: true });
+    const reportFile = path.join(reportDir, 'suggested-fixes.json');
+    let data = [];
+    if (fs.existsSync(reportFile)) {
+        try { data = JSON.parse(fs.readFileSync(reportFile, 'utf8')); } catch(e){}
     }
-  } catch (e) {}
+    data.push({
+        timestamp: new Date().toISOString(),
+        framework: "playwright",
+        language: "javascript/typescript",
+        file: fileInfo.file,
+        line: fileInfo.line,
+        action: action,
+        old_locator: oldSelector,
+        suggested_locator: newSelector,
+        confidence: 0.0,
+        page_url: url
+    });
+    fs.writeFileSync(reportFile, JSON.stringify(data, null, 2), 'utf8');
 }
 
+
+// ── Core Engine ────────────────────────────────────────────────────────────
 async function consultBrain(selector, action, domSnapshot, pageUrl) {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       const resp = await fetch(`${BRAIN_URL}/api/heal-locator`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selector, action, dom_snapshot: domSnapshot, page_url: pageUrl }),
+        body: JSON.stringify({ selector, action, dom_snapshot: domSnapshot, page_url: pageUrl, framework: "playwright-ts" }),
         signal: AbortSignal.timeout(30000),
       });
       if (!resp.ok) return null;
@@ -85,13 +95,22 @@ async function consultBrain(selector, action, domSnapshot, pageUrl) {
   return null;
 }
 
+// ── Patching Logic ─────────────────────────────────────────────────────────
 function makeHealed(original, action) {
   return async function(selector, ...args) {
     const firstArgs = [...args];
-    if (firstArgs[0] && typeof firstArgs[0] === 'object') {
-      firstArgs[0] = { ...firstArgs[0], timeout: 2000 };
+    let optionsIndex = 0;
+    if (action === 'fill' || action === 'select' || action === 'press') {
+      optionsIndex = 1;
+    }
+
+    if (firstArgs[optionsIndex] && typeof firstArgs[optionsIndex] === 'object') {
+      firstArgs[optionsIndex] = { ...firstArgs[optionsIndex], timeout: 2000 };
     } else {
-      firstArgs.unshift({ timeout: 2000 });
+      while (firstArgs.length < optionsIndex) {
+        firstArgs.push(undefined);
+      }
+      firstArgs[optionsIndex] = { timeout: 2000 };
     }
 
     try {
@@ -103,9 +122,7 @@ function makeHealed(original, action) {
         const url = await this.url();
         const healed = await consultBrain(selector, action, dom, url);
         if (healed) {
-          if (config.healing.auto_patch) {
-            applySourcePatch(selector, healed);
-          }
+          writeToReport(selector, healed, action, findCallerFile(), url);
           return await original.apply(this, [healed, ...args]);
         }
       } catch (brainErr) {
@@ -116,25 +133,93 @@ function makeHealed(original, action) {
   };
 }
 
+function patchLocatorPrototype(locator) {
+    const proto = Object.getPrototypeOf(locator);
+    if (proto.__ghost_patched) return;
+    proto.__ghost_patched = true;
+
+    const actions = { click: 'click', fill: 'fill', hover: 'hover', check: 'check', dblclick: 'click', waitFor: 'wait', waitForSelector: 'wait' };
+
+    for (const [method, action] of Object.entries(actions)) {
+        if (typeof proto[method] === 'function') {
+            const original = proto[method];
+            proto[method] = async function(...args) {
+                const selector = this.__ghost_selector || this.toString();
+                const page = this.__ghost_page;
+
+                const firstArgs = [...args];
+                let optionsIndex = 0;
+                if (method === 'fill' || method === 'selectOption' || method === 'press') {
+                    optionsIndex = 1;
+                }
+
+                if (firstArgs[optionsIndex] && typeof firstArgs[optionsIndex] === 'object') {
+                    firstArgs[optionsIndex] = { ...firstArgs[optionsIndex], timeout: 2000 };
+                } else {
+                    while (firstArgs.length < optionsIndex) {
+                        firstArgs.push(undefined);
+                    }
+                    firstArgs[optionsIndex] = { timeout: 2000 };
+                }
+
+                try {
+                    return await original.apply(this, firstArgs);
+                } catch (err) {
+                    if (!page) return await original.apply(this, args);
+
+                    console.log(`[GHOST] ${action} failed for locator '${selector}'. Requesting AI heal...`);
+                    try {
+                        const dom = await page.content();
+                        const url = await page.url();
+                        const healed = await consultBrain(selector, action, dom, url);
+                        if (healed) {
+                            writeToReport(selector, healed, action, findCallerFile(), url);
+                            const healedLocator = page.locator(healed);
+                            return await healedLocator[method].apply(healedLocator, args);
+                        }
+                    } catch (brainErr) {
+                        console.error('[GHOST] Brain error:', brainErr);
+                    }
+                    return await original.apply(this, args);
+                }
+            };
+        }
+    }
+}
+
 function patchPagePrototype(page) {
-  if (isPatched) return;
+  if (page.__ghost_patched) return;
+  page.__ghost_patched = true;
+
   const proto = Object.getPrototypeOf(page);
-  const actions = { click: 'click', fill: 'fill', hover: 'hover', check: 'check', dblclick: 'click' };
+  const actions = { click: 'click', fill: 'fill', hover: 'hover', check: 'check', dblclick: 'click', waitForSelector: 'wait' };
 
   for (const [method, action] of Object.entries(actions)) {
-    if (typeof proto[method] === 'function') {
+    if (typeof proto[method] === 'function' && !proto[method].__ghost_patched) {
       const original = proto[method];
       proto[method] = makeHealed(original, action);
+      proto[method].__ghost_patched = true;
     }
   }
-  isPatched = true;
-  console.log('[GHOST] Playwright Page prototype successfully patched inside worker!');
+
+  const originalLocator = proto.locator;
+  if (originalLocator && !proto.locator.__ghost_patched) {
+      proto.locator = function(selector, ...args) {
+          const loc = originalLocator.apply(this, [selector, ...args]);
+          loc.__ghost_selector = selector;
+          loc.__ghost_page = this;
+          patchLocatorPrototype(loc);
+          return loc;
+      };
+      proto.locator.__ghost_patched = true;
+  }
+
+  console.log('[GHOST] Playwright Page & Locator prototypes successfully patched inside worker!');
 }
 
 Module._load = function(request, parent, isMain) {
   const exports = originalLoad.apply(this, arguments);
 
-  // Intercept playwright-core to wrap browser creation
   if (request === 'playwright-core' || request === 'playwright') {
     if (exports && exports.chromium && !exports.__ghost_patched) {
       exports.__ghost_patched = true;

@@ -1,36 +1,92 @@
 /**
- * 👻 Ghost Healer Demo — Playwright TypeScript (ZERO code changes)
+ * 👻 Ghost Healer Demo — Locator API Validation
  *
- * This test uses STANDARD Playwright page.click() / page.fill().
- * NO GhostLocator import. NO wrapper. NOTHING changed in the test.
+ * PURPOSE:
+ * This demo intentionally uses Locator API instead of page.click/page.fill
+ * to validate the NEW enterprise Ghost architecture.
  *
- * Ghost healing is activated by ONE LINE in playwright.config.ts:
- *   globalSetup: require.resolve('../../sdk/ts/src/setup')
+ * WHY?
+ * Old Ghost architecture only patched page methods.
+ * Real enterprise frameworks mostly use locator methods.
  *
- * The locators below are intentionally WRONG.
- * Ghost Healer heals them silently. Test passes.
+ * This test validates:
+ * - locator.fill()
+ * - locator.click()
+ * - locator.waitFor()
+ *
+ * are intercepted and healed correctly.
+ *
+ * EXPECTED RESULT:
+ * Ghost heals broken locators silently using Render AI Brain.
  *
  * Run:
- *   npx playwright test demo/playwright-ts/test_demo.spec.ts
+ * npx playwright test demo/playwright-ts/test_demo.spec.ts --headed
  */
+
 import { test, expect } from '@playwright/test';
 
-test('login with broken locators — standard page API, Ghost heals silently', async ({ page }) => {
-  await page.goto('https://www.saucedemo.com/');
+test(
+  'locator API healing — Ghost heals silently',
+  async ({ page }) => {
 
-  // Standard page.fill() — 🔴 BROKEN selector, Ghost heals it automatically
-  await page.fill('#user-name', 'standard_user');
+    await page.goto('https://www.saucedemo.com/');
 
-  // Standard page.fill() — 🔴 BROKEN selector, Ghost heals  // 🔴 BROKEN: correct is #password
-  await page.fill('#password', 'secret_sauce');
+    // ─────────────────────────────────────────────
+    // 🔴 INTENTIONALLY BROKEN USERNAME LOCATOR
+    // Correct = #user-name
+    // ─────────────────────────────────────────────
 
-  // Use correct login button
-  await page.click('#login-button');
+    const usernameInput =
+      page.locator('#user-name-broken');
 
-  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');
+    await usernameInput.waitFor({
+      state: 'visible',
+    });
 
-  // 🔴 BROKEN: correct is #add-to-cart-sauce-labs-backpack
-  await page.click('#add-to-cart-sauce-labs-backpack');
+    await usernameInput.fill('standard_user');
 
-  console.log('[SUCCESS] Login succeeded — standard page API, zero code changes!');
-});
+    // ─────────────────────────────────────────────
+    // 🔴 INTENTIONALLY BROKEN PASSWORD LOCATOR
+    // Correct = #password
+    // ─────────────────────────────────────────────
+
+    const passwordInput =
+      page.locator('#password-broken');
+
+    await passwordInput.fill('secret_sauce');
+
+    // ─────────────────────────────────────────────
+    // 🔴 INTENTIONALLY BROKEN LOGIN BUTTON
+    // Correct = #login-button
+    // ─────────────────────────────────────────────
+
+    const loginButton =
+      page.locator('#login-button-broken');
+
+    await loginButton.click();
+
+    // ─────────────────────────────────────────────
+    // Validate successful login
+    // ─────────────────────────────────────────────
+
+    await expect(page).toHaveURL(
+      'https://www.saucedemo.com/inventory.html'
+    );
+
+    // ─────────────────────────────────────────────
+    // 🔴 INTENTIONALLY BROKEN PRODUCT BUTTON
+    // Correct = #add-to-cart-sauce-labs-backpack
+    // ─────────────────────────────────────────────
+
+    const addToCartButton =
+      page.locator(
+        '#add-to-cart-sauce-labs-backpack-broken'
+      );
+
+    await addToCartButton.click();
+
+    console.log(
+      '[SUCCESS] Ghost Healer Locator API test passed.'
+    );
+  }
+);

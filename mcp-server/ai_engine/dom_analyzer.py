@@ -123,9 +123,10 @@ def analyze_dom(
         # input/textarea elements by marking them as non-interactive.
         preferred_tags = ACTION_TAG_MAP.get(action)
         if preferred_tags and element.name not in preferred_tags:
-            # Allow inputs with role=button to still be considered for clicks
+            # Allow inputs with role=button or clickable types to still be considered for clicks
             role = features.get("role", "")
-            if not (action == "click" and role in ("button", "link")):
+            type_attr = features.get("type", "").lower()
+            if not (action == "click" and (role in ("button", "link") or type_attr in ("submit", "button", "image"))):
                 features["action_mismatch"] = True
                 features["is_interactive"] = False  # Deprioritize in scoring
 

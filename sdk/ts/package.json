@@ -1,6 +1,6 @@
 {
   "name": "ghost-healer-ts",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Universal AI Self-Healing SDK for Playwright TypeScript/JavaScript",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -23,6 +23,7 @@
   "devDependencies": {
     "@playwright/test": "^1.39.0",
     "@types/node": "^20.0.0",
+    "@types/selenium-webdriver": "^4.35.5",
     "typescript": "^5.0.0"
   },
   "dependencies": {

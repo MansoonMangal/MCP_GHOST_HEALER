@@ -79,7 +79,14 @@ def _dom_structure_similarity(orig: Dict, cand: Dict) -> float:
     if not orig_tag:
         tag_score = 100.0  # Not specified in original selector -> ignore
     else:
-        tag_score = 100.0 if orig_tag == cand_tag else 20.0
+        if orig_tag == cand_tag:
+            tag_score = 100.0
+        elif (orig_tag == "button" and cand_tag == "input" and cand.get("type") in ("submit", "button")):
+            tag_score = 90.0
+        elif (orig_tag == "input" and cand_tag == "button" and cand.get("role") == "button"):
+            tag_score = 90.0
+        else:
+            tag_score = 20.0
 
     orig_path = orig.get("dom_path") or orig.get("tag_name") or ""
     cand_path = cand.get("dom_path") or cand.get("tag_name") or ""
@@ -97,6 +104,12 @@ def _semantic_role_similarity(orig: Dict, cand: Dict) -> float:
         if f.get("role"):
             return f["role"].lower()
         tag = f.get("tag_name", "")
+        if tag == "input":
+            t = f.get("type", "").lower()
+            if t in ("button", "submit", "image", "reset"):
+                return "button"
+            elif t in ("checkbox", "radio"):
+                return t
         role_map = {
             "button": "button", "a": "link", "input": "textbox",
             "select": "listbox", "textarea": "textbox", "label": "label",

@@ -4,8 +4,6 @@ import time
 from typing import Optional
 from ghost_healer.core.config import settings
 from ghost_healer.core.cache import cache
-from ghost_healer.utils.source_healer import source_healer
-
 logger = logging.getLogger("GhostEngine")
 
 class GhostEngine:
@@ -55,9 +53,6 @@ class GhostEngine:
                         
                         if settings.healing.cache_enabled:
                             cache.set(selector, healed, confidence)
-                        
-                        if settings.healing.auto_patch:
-                            source_healer.apply_fix(selector, healed)
                             
                         return healed
                     

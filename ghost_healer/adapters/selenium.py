@@ -1,35 +1,21 @@
 """
 Ghost Healer — Selenium Python Adapter
 
-Patches a Selenium WebDriver instance with AI Self-Healing.
-Works identically to the Playwright adapter — invisible to the test author.
-
-Usage:
-    from ghost_healer.adapters.selenium import protect_driver
-    from selenium import webdriver
-
-    driver = webdriver.Chrome()
-    protect_driver(driver)  # 👻 Ghost Mode Active
-
-    # Now all find_element calls are self-healing
-    driver.find_element(By.ID, "login-btn").click()
+Patches a Selenium WebDriver and WebElement instances with AI Self-Healing.
 """
 import time
 import logging
+import types
 from typing import Any
 
 from ghost_healer.core.engine import ghost_engine
 from ghost_healer.utils.reporter import reporter
-from ghost_healer.utils.source_healer import source_healer
+from ghost_healer.utils.stack_parser import parse_stack_trace
 
 logger = logging.getLogger("GhostSelenium")
 
-# Selenium action mappings
-_SELENIUM_ACTION = "click"
-
 
 def _get_css_selector(by: Any, value: str) -> str:
-    """Convert Selenium By strategy + value to a CSS selector string for the AI Brain."""
     from selenium.webdriver.common.by import By
     mapping = {
         By.ID:         f"#{value}",
@@ -37,39 +23,89 @@ def _get_css_selector(by: Any, value: str) -> str:
         By.NAME:       f"[name='{value}']",
         By.TAG_NAME:   value,
         By.CSS_SELECTOR: value,
-        By.XPATH:      value,          # Brain supports XPath strings
+        By.XPATH:      value,
         By.LINK_TEXT:  f"text={value}",
         By.PARTIAL_LINK_TEXT: f"text={value}",
     }
     return mapping.get(by, value)
 
 
+def _get_dom(drv) -> str:
+    try:
+        return drv.execute_script("return document.documentElement.outerHTML")
+    except Exception:
+        try:
+            return drv.page_source
+        except Exception:
+            return ""
+
+# ── WebElement Level Patching ─────────────────────────────────────────────────
+
+def _heal_and_retry_element(element: Any, driver: Any, selector: str, action: str, original_fn, *args, **kwargs):
+    try:
+        return original_fn(*args, **kwargs)
+    except Exception as original_error:
+        start = time.time()
+        logger.warning(f"[GHOST] {action} failed on element '{selector}'. Requesting AI heal...")
+
+        dom = _get_dom(driver)
+        url = driver.current_url
+        healed = ghost_engine.get_healed_locator(selector, action, dom, url=url, framework="selenium-python")
+        duration = (time.time() - start) * 1000
+
+        if healed:
+            logger.info(f"[GHOST] Healed element '{selector}' → '{healed}' (action={action})")
+            filename, lineno = parse_stack_trace()
+            reporter.log_healing(
+                original=selector,
+                healed=healed,
+                confidence=0.0,
+                duration_ms=duration,
+                action=action,
+                patched_file=filename,
+                framework="selenium-python"
+            )
+
+            from selenium.webdriver.common.by import By
+            # Find the new element
+            new_element = driver.find_element(By.CSS_SELECTOR, healed)
+            # Re-run the action on the new element
+            new_fn = getattr(new_element, original_fn.__name__)
+            return new_fn(*args, **kwargs)
+
+        logger.error(f"[GHOST] Could not heal '{selector}'. Raising original error.")
+        raise original_error
+
+def _make_element_patch(element: Any, driver: Any, method_name: str, action: str, selector: str):
+    original_fn = getattr(element, method_name)
+    def patched(*args, **kwargs):
+        return _heal_and_retry_element(element, driver, selector, action, original_fn, *args, **kwargs)
+    return patched
+
+def protect_element(element: Any, driver: Any, selector: str) -> Any:
+    actions_to_patch = {
+        "click":     "click",
+        "send_keys": "send_keys",
+        "clear":     "clear",
+        "submit":    "submit",
+    }
+    for method_name, action_type in actions_to_patch.items():
+        if hasattr(element, method_name):
+            setattr(element, method_name, _make_element_patch(element, driver, method_name, action_type, selector))
+    return element
+
+
+# ── WebDriver Level Patching ──────────────────────────────────────────────────
+
 def protect_driver(driver: Any) -> Any:
-    """
-    👻 Patches a Selenium WebDriver with AI Self-Healing.
-
-    Wraps:
-      - find_element       → heals broken locators on NoSuchElementException
-      - find_elements      → same healing logic for multi-element queries
-
-    Returns the same driver instance (patched in-place).
-    """
     original_find_element = driver.find_element
     original_find_elements = driver.find_elements
 
-    def _get_dom(drv) -> str:
-        """Capture current page source as DOM snapshot."""
-        try:
-            return drv.execute_script("return document.documentElement.outerHTML")
-        except Exception:
-            try:
-                return drv.page_source
-            except Exception:
-                return ""
-
     def healed_find_element(by: Any, value: str):
+        selector = _get_css_selector(by, value)
         try:
-            return original_find_element(by, value)
+            element = original_find_element(by, value)
+            return protect_element(element, driver, selector)
         except Exception as original_error:
             try:
                 from selenium.common.exceptions import NoSuchElementException
@@ -78,55 +114,70 @@ def protect_driver(driver: Any) -> Any:
             except ImportError:
                 raise original_error
 
-            selector = _get_css_selector(by, value)
             logger.warning(f"[GHOST] find_element failed for '{selector}'. Requesting AI heal...")
 
             start = time.time()
             dom = _get_dom(driver)
             url = driver.current_url
-            healed = ghost_engine.get_healed_locator(selector, "click", dom, url=url, framework="selenium-python")
+            healed = ghost_engine.get_healed_locator(selector, "find", dom, url=url, framework="selenium-python")
             duration = (time.time() - start) * 1000
 
             if healed:
                 logger.info(f"[GHOST] Healed '{selector}' → '{healed}'")
-                reporter.log_healing(selector, healed, 0.0, duration)
-                
-                # PERMANENT PATCH: fix the source file
-                source_healer.apply_fix(selector, healed)
+                filename, lineno = parse_stack_trace()
+                reporter.log_healing(
+                    original=selector,
+                    healed=healed,
+                    confidence=0.0,
+                    duration_ms=duration,
+                    action="find",
+                    patched_file=filename,
+                    framework="selenium-python"
+                )
 
                 from selenium.webdriver.common.by import By
-                return original_find_element(By.CSS_SELECTOR, healed)
+                element = original_find_element(By.CSS_SELECTOR, healed)
+                return protect_element(element, driver, healed)
 
             logger.error(f"[GHOST] Could not heal '{selector}'. Raising original error.")
             raise original_error
 
     def healed_find_elements(by: Any, value: str):
+        selector = _get_css_selector(by, value)
         try:
             elements = original_find_elements(by, value)
             if elements:
-                return elements
-            # If empty list (not an exception), try to heal
+                return [protect_element(e, driver, selector) for e in elements]
             raise Exception("No elements found")
         except Exception as original_error:
-            selector = _get_css_selector(by, value)
             logger.warning(f"[GHOST] find_elements empty for '{selector}'. Requesting AI heal...")
 
             start = time.time()
             dom = _get_dom(driver)
-            healed = ghost_engine.get_healed_locator(selector, "click", dom)
+            url = driver.current_url
+            healed = ghost_engine.get_healed_locator(selector, "find", dom, url=url, framework="selenium-python")
             duration = (time.time() - start) * 1000
 
             if healed:
                 logger.info(f"[GHOST] Healed '{selector}' → '{healed}'")
-                reporter.log_healing(selector, healed, 0.0, duration)
+                filename, lineno = parse_stack_trace()
+                reporter.log_healing(
+                    original=selector,
+                    healed=healed,
+                    confidence=0.0,
+                    duration_ms=duration,
+                    action="find",
+                    patched_file=filename,
+                    framework="selenium-python"
+                )
                 from selenium.webdriver.common.by import By
-                return original_find_elements(By.CSS_SELECTOR, healed)
+                elements = original_find_elements(By.CSS_SELECTOR, healed)
+                return [protect_element(e, driver, healed) for e in elements]
 
             raise original_error
 
-    # Apply patches
     driver.find_element = healed_find_element
     driver.find_elements = healed_find_elements
 
-    logger.info("[GHOST] Selenium driver protection active. AI healing enabled.")
+    logger.info("[GHOST] Selenium driver & element protection active. AI healing enabled.")
     return driver
