@@ -22,6 +22,12 @@ try {
 const BRAIN_URL = process.env.GHOST_BRAIN_URL || config.mcp_server.url;
 const CONFIDENCE_THRESHOLD = config.mcp_server.confidence_threshold;
 
+const SESSION_ID = (function() {
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+})();
+
 
 // ── Stack Parser & Reporter ────────────────────────────────────────────────
 function findCallerFile() {
@@ -68,15 +74,29 @@ function findWorkspaceRoot() {
     }
 }
 
-function writeToReport(oldSelector, newSelector, action, fileInfo, url, confidence) {
+// ── Eagerly Clear mcp_server.log at start of TS/JS test run ───────────
+(function clearServerLog() {
+    try {
+        const workspaceRoot = findWorkspaceRoot();
+        const mcpLogPath = path.join(workspaceRoot, 'reports', 'logs', 'mcp_server.log');
+        if (fs.existsSync(mcpLogPath)) {
+            fs.writeFileSync(mcpLogPath, '');
+            console.log('🧹 [GHOST] Cleared mcp_server.log for new run');
+        }
+    } catch (e) {}
+})();
+
+function writeToReport(oldSelector, newSelector, action, fileInfo, url, confidence, latencyMs = 0) {
     const reportDir = path.join(findWorkspaceRoot(), 'reports', 'ghost');
     fs.mkdirSync(reportDir, { recursive: true });
+    
+    // 1. Write to global suggested-fixes.json
     const reportFile = path.join(reportDir, 'suggested-fixes.json');
     let data = [];
     if (fs.existsSync(reportFile)) {
         try { data = JSON.parse(fs.readFileSync(reportFile, 'utf8')); } catch(e){}
     }
-    data.push({
+    data.unshift({
         timestamp: getISTTimestamp(),
         framework: "playwright",
         language: "javascript/typescript",
@@ -89,6 +109,32 @@ function writeToReport(oldSelector, newSelector, action, fileInfo, url, confiden
         page_url: url
     });
     fs.writeFileSync(reportFile, JSON.stringify(data, null, 2), 'utf8');
+
+    // 2. Write to session_<session_id>.json
+    const sessionFile = path.join(reportDir, `session_${SESSION_ID}.json`);
+    let sessionData = [];
+    if (fs.existsSync(sessionFile)) {
+        try { sessionData = JSON.parse(fs.readFileSync(sessionFile, 'utf8')); } catch(e){}
+    }
+    sessionData.unshift({
+        timestamp: getISTTimestamp(),
+        session_id: SESSION_ID,
+        framework: "playwright-ts",
+        language: "javascript/typescript",
+        file: fileInfo.file,
+        line: fileInfo.line,
+        action: action,
+        old_locator: oldSelector,
+        suggested_locator: newSelector,
+        confidence: confidence || 0.0,
+        page_url: url,
+        decision: "AUTO_HEAL",
+        latency_ms: Number((latencyMs).toFixed(2)),
+        retry_count: 0,
+        healing_mode: "runtime"
+    });
+    fs.writeFileSync(sessionFile, JSON.stringify(sessionData, null, 2), 'utf8');
+    console.log(`[GHOST] 📂 Logged session details to audit trail: session_${SESSION_ID}.json`);
 }
 
 
@@ -141,10 +187,12 @@ function makeHealed(original, action) {
       try {
         const dom = await this.content();
         const url = await this.url();
+        const startTime = Date.now();
         const result = await consultBrain(selector, action, dom, url);
+        const latencyMs = Date.now() - startTime;
         if (result) {
           const { healed_locator, confidence } = result;
-          writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence);
+          writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence, latencyMs);
           return await original.apply(this, [healed_locator, ...args]);
         }
       } catch (brainErr) {
@@ -193,10 +241,12 @@ function patchLocatorPrototype(locator) {
                     try {
                         const dom = await page.content();
                         const url = await page.url();
+                        const startTime = Date.now();
                         const result = await consultBrain(selector, action, dom, url);
+                        const latencyMs = Date.now() - startTime;
                         if (result) {
                             const { healed_locator, confidence } = result;
-                            writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence);
+                            writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence, latencyMs);
                             const healedLocator = page.locator(healed_locator);
                             return await healedLocator[method].apply(healedLocator, args);
                         }

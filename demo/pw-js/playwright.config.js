@@ -1,7 +1,6 @@
 // 👻 Ghost Healer — Playwright JS Config
-// The ONLY change needed in your existing config:
-//   globalSetup: require.resolve('ghost-healer-ts/setup')
 const { defineConfig } = require('@playwright/test');
+require('../../sdk/ts/src/pw-hook.js');
 
 module.exports = defineConfig({
   use: { headless: false },

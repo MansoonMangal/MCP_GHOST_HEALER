@@ -38,6 +38,16 @@ class HealingReporter:
         self.framework = settings.healing.framework
         os.makedirs(self.output_dir, exist_ok=True)
 
+        # Eagerly clear/reset mcp_server.log at start of execution
+        mcp_log = os.path.join(root_dir, "reports", "logs", "mcp_server.log")
+        if os.path.exists(mcp_log):
+            try:
+                with open(mcp_log, "w", encoding="utf-8") as f:
+                    f.write("")
+                logger.info("[REPORTER] 🧹 Cleared mcp_server.log for new run")
+            except Exception as e:
+                logger.warning(f"[REPORTER] Could not clear mcp_server.log: {e}")
+
     def log_healing(
         self,
         original: str,
@@ -78,7 +88,7 @@ class HealingReporter:
         if settings.reporting.save_traces and execution_trace:
             event["execution_trace"] = execution_trace
 
-        self.events.append(event)
+        self.events.insert(0, event)
         logger.info(
             f"[REPORTER] {action} healed | '{original}' → '{healed}' "
             f"| confidence={confidence:.0%} | decision={decision}"
@@ -95,6 +105,37 @@ class HealingReporter:
                 json.dump(self.events, f, indent=2, default=str)
         except Exception as e:
             logger.warning(f"[REPORTER] Could not flush event: {e}")
+
+        # Also append to global suggested-fixes.json for cross-language consolidation
+        suggested_fixes_path = os.path.join(self.output_dir, "suggested-fixes.json")
+        try:
+            fixes = []
+            if os.path.exists(suggested_fixes_path):
+                try:
+                    with open(suggested_fixes_path, "r", encoding="utf-8") as f:
+                        fixes = json.load(f)
+                        if not isinstance(fixes, list):
+                            fixes = []
+                except Exception:
+                    fixes = []
+            
+            fixes.insert(0, {
+                "timestamp": event["timestamp"],
+                "framework": event["framework"],
+                "language": "python",
+                "file": event["file"],
+                "line": event["line"],
+                "action": event["action"],
+                "old_locator": event["old_locator"],
+                "suggested_locator": event["suggested_locator"],
+                "confidence": event["confidence"],
+                "page_url": event["page_url"]
+            })
+            
+            with open(suggested_fixes_path, "w", encoding="utf-8") as f:
+                json.dump(fixes, f, indent=2, default=str)
+        except Exception as e:
+            logger.warning(f"[REPORTER] Could not write to suggested-fixes.json: {e}")
 
     def finalize(self) -> Optional[str]:
         """

@@ -10,28 +10,38 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 
-class JSONFormatter(logging.Formatter):
-    """Emits each log record as a single JSON line for machine-readable logs."""
+class ReadableFormatter(logging.Formatter):
+    """Emits each log record as a beautiful, human-readable standard log line in IST (+05:30)."""
 
     def format(self, record: logging.LogRecord) -> str:
-        log_entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-            "module": record.module,
-            "function": record.funcName,
-            "line": record.lineno,
+        # Calculate IST time (+05:30)
+        from datetime import datetime, timedelta, timezone
+        ist_tz = timezone(timedelta(hours=5, minutes=30))
+        ist_now = datetime.now(ist_tz)
+        dt_str = ist_now.strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+        # Format base log string
+        base = f"[{dt_str} +05:30] [{record.levelname:<7}] [{record.name:<18}] {record.getMessage()}"
+
+        # Append true custom metadata (excluding standard Python LogRecord attributes)
+        STANDARD_FIELDS = {
+            'name', 'msg', 'args', 'levelname', 'levelno', 'pathname', 'filename',
+            'module', 'exc_info', 'exc_text', 'stack_info', 'lineno', 'funcName',
+            'created', 'msecs', 'relativeCreated', 'thread', 'threadName',
+            'processName', 'process', 'taskName', 'asctime', 'message'
         }
-        # Attach extra fields (e.g. healing_id, test_name passed via 'extra')
+        extras = []
         for key, value in record.__dict__.items():
-            if key not in logging.LogRecord.__dict__ and not key.startswith("_"):
-                log_entry[key] = value
+            if key not in STANDARD_FIELDS and not key.startswith("_"):
+                extras.append(f"{key}={value}")
+        if extras:
+            base += f"  ➔  ({', '.join(extras)})"
 
+        # Append stack traces / exceptions if any
         if record.exc_info:
-            log_entry["exception"] = self.formatException(record.exc_info)
+            base += f"\n{self.formatException(record.exc_info)}"
 
-        return json.dumps(log_entry, default=str)
+        return base
 
 
 def get_logger(name: str, log_file: str = None, level: str = "INFO") -> logging.Logger:
@@ -64,7 +74,7 @@ def get_logger(name: str, log_file: str = None, level: str = "INFO") -> logging.
         file_handler = logging.handlers.RotatingFileHandler(
             log_path, maxBytes=10 * 1024 * 1024, backupCount=5, encoding="utf-8"
         )
-        file_handler.setFormatter(JSONFormatter())
+        file_handler.setFormatter(ReadableFormatter())
         logger.addHandler(file_handler)
 
     return logger

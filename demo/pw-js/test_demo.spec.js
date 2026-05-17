@@ -1,29 +1,102 @@
 /**
- * 👻 Ghost Healer Demo — Playwright JavaScript (ZERO code changes)
+ * 👻 Ghost Healer Demo — Playwright JavaScript Locator API Validation
  *
- * Standard Playwright JS test. No Ghost Healer imports.
- * Healing is activated via playwright.config.js globalSetup.
+ * PURPOSE:
+ * Validate the NEW enterprise Ghost architecture.
  *
- * Run: npx playwright test demo/pw-js/test_demo.spec.js
+ * Old Ghost architecture only intercepted:
+ * - page.click()
+ * - page.fill()
+ *
+ * Real-world Playwright JS frameworks mostly use:
+ * - locator.click()
+ * - locator.fill()
+ * - locator.waitFor()
+ *
+ * This demo validates:
+ * - Locator API interception
+ * - runtime healing
+ * - AI recovery flow
+ * - Render Brain integration
+ *
+ * EXPECTED RESULT:
+ * Ghost silently heals broken locators using the cloud AI Brain.
+ *
+ * Run:
+ * npx playwright test demo/pw-js/test_demo.spec.js --headed
  */
-const { test, expect } = require('@playwright/test');
 
-test('login with broken locators — JS, Ghost heals silently', async ({ page }) => {
-  const { GhostLocator } = require('../../sdk/ts/dist');
-  const ghost = new GhostLocator(page, { confidenceThreshold: 0.0 });
-  await page.goto('https://www.saucedemo.com/');
+const { test, expect } =
+  require('@playwright/test');
 
-  // Standard page.fill() — broken, Ghost heals automatically
-  await ghost.fill('#user-name', 'standard_user');
-  await ghost.fill('#password', 'secret_sauce');
+test(
+  'locator API healing — JS Ghost heals silently',
+  async ({ page }) => {
 
-  // Use correct login button
-  await ghost.click('#login-button');
+    await page.goto(
+      'https://www.saucedemo.com/'
+    );
 
-  await expect(page).toHaveURL('https://www.saucedemo.com/inventory.html');
+    // ─────────────────────────────────────────
+    // 🔴 BROKEN USERNAME LOCATOR
+    // Correct = #user-name
+    // ─────────────────────────────────────────
 
-  // 🔴 BROKEN: correct is #add-to-cart-sauce-labs-backpack
-  await ghost.click('#add-to-cart-sauce-labs-backpack');
+    const usernameInput =
+      page.locator('#user-name-WRONG');
 
-  console.log('[SUCCESS] Login succeeded — standard JS page API, zero code changes!');
-});
+    await usernameInput.waitFor({
+      state: 'visible',
+    });
+
+    await usernameInput.fill(
+      'standard_user'
+    );
+
+    // ─────────────────────────────────────────
+    // 🔴 BROKEN PASSWORD LOCATOR
+    // Correct = #password
+    // ─────────────────────────────────────────
+
+    const passwordInput =
+      page.locator('#password-WRONG');
+
+    await passwordInput.fill(
+      'secret_sauce'
+    );
+
+    // ─────────────────────────────────────────
+    // 🔴 BROKEN LOGIN BUTTON
+    // Correct = #login-button
+    // ─────────────────────────────────────────
+
+    const loginButton =
+      page.locator('#login-button-WRONG');
+
+    await loginButton.click();
+
+    // ─────────────────────────────────────────
+    // Validate successful login
+    // ─────────────────────────────────────────
+
+    await expect(page).toHaveURL(
+      'https://www.saucedemo.com/inventory.html'
+    );
+
+    // ─────────────────────────────────────────
+    // 🔴 BROKEN ADD TO CART BUTTON
+    // Correct = #add-to-cart-sauce-labs-backpack
+    // ─────────────────────────────────────────
+
+    const addToCartButton =
+      page.locator(
+        '#add-to-cart-sauce-labs-backpack-WRONG'
+      );
+
+    await addToCartButton.click();
+
+    console.log(
+      '[SUCCESS] Ghost Healer JS Locator API validation passed.'
+    );
+  }
+);

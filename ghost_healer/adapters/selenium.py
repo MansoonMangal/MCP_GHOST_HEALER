@@ -50,7 +50,7 @@ def _heal_and_retry_element(element: Any, driver: Any, selector: str, action: st
 
         dom = _get_dom(driver)
         url = driver.current_url
-        healed = ghost_engine.get_healed_locator(selector, action, dom, url=url, framework="selenium-python")
+        healed, confidence = ghost_engine.get_healed_locator(selector, action, dom, url=url, framework="selenium-python")
         duration = (time.time() - start) * 1000
 
         if healed:
@@ -59,7 +59,7 @@ def _heal_and_retry_element(element: Any, driver: Any, selector: str, action: st
             reporter.log_healing(
                 original=selector,
                 healed=healed,
-                confidence=0.0,
+                confidence=confidence,
                 duration_ms=duration,
                 action=action,
                 patched_file=filename,
@@ -119,7 +119,7 @@ def protect_driver(driver: Any) -> Any:
             start = time.time()
             dom = _get_dom(driver)
             url = driver.current_url
-            healed = ghost_engine.get_healed_locator(selector, "find", dom, url=url, framework="selenium-python")
+            healed, confidence = ghost_engine.get_healed_locator(selector, "find", dom, url=url, framework="selenium-python")
             duration = (time.time() - start) * 1000
 
             if healed:
@@ -128,7 +128,7 @@ def protect_driver(driver: Any) -> Any:
                 reporter.log_healing(
                     original=selector,
                     healed=healed,
-                    confidence=0.0,
+                    confidence=confidence,
                     duration_ms=duration,
                     action="find",
                     patched_file=filename,
@@ -155,7 +155,7 @@ def protect_driver(driver: Any) -> Any:
             start = time.time()
             dom = _get_dom(driver)
             url = driver.current_url
-            healed = ghost_engine.get_healed_locator(selector, "find", dom, url=url, framework="selenium-python")
+            healed, confidence = ghost_engine.get_healed_locator(selector, "find", dom, url=url, framework="selenium-python")
             duration = (time.time() - start) * 1000
 
             if healed:
@@ -164,7 +164,7 @@ def protect_driver(driver: Any) -> Any:
                 reporter.log_healing(
                     original=selector,
                     healed=healed,
-                    confidence=0.0,
+                    confidence=confidence,
                     duration_ms=duration,
                     action="find",
                     patched_file=filename,

@@ -1,46 +1,92 @@
 """
-👻 Ghost Healer Demo — Playwright Python (ZERO code changes)
+👻 Ghost Healer Demo — Playwright Python Locator API Validation
 
-This test file contains ZERO Ghost Healer code.
-No imports. No fixtures. No wrappers.
+PURPOSE:
+This demo validates the NEW enterprise Ghost architecture.
 
-Ghost Healer activates automatically because:
-  pip install ghost-healer
-  → registers pytest plugin via entry_points
-  → plugin auto-wraps the `page` fixture for every test
+Old Ghost architecture only patched:
+- page.click()
+- page.fill()
 
-The locators below are intentionally WRONG.
-Ghost Healer heals them. Test passes. You changed nothing.
+But real-world enterprise frameworks mostly use:
+- locator.click()
+- locator.fill()
+- locator.wait_for()
+
+This test validates that Ghost now intercepts:
+- Locator API
+- runtime failures
+- wait_for failures
+- fill failures
+- click failures
+
+EXPECTED RESULT:
+Ghost silently heals broken locators using the Render AI Brain.
 
 Run:
     pytest demo/playwright-python/test_demo.py -v -s
 """
+
 # ← NO ghost_healer import
-# ← NO protect_page() call
-# ← NO fixtures
+# ← NO protect_page()
+# ← ZERO framework-specific changes
 
 
-def test_login_with_broken_locators(page):
-    """
-    Standard Playwright test — no Ghost Healer code at all.
-    Locators are broken. Ghost Healer heals them automatically.
-    """
-    page.set_default_timeout(30000) # 👻 Increase timeout for AI healing
+def test_locator_api_healing(page):
+
+    page.set_default_timeout(30000)
+
     page.goto("https://www.saucedemo.com/")
 
-    # Standard page.fill() —    # 🔴 BROKEN: correct is #user-name
-    page.fill("#user-name", "standard_user")
+    # ─────────────────────────────────────────────
+    # 🔴 BROKEN USERNAME LOCATOR
+    # Correct = #user-name
+    # ─────────────────────────────────────────────
 
-    # 🔴 BROKEN: correct is #password
-    page.fill("#password", "secret_sauce")
+    username_input = page.locator("#user-name-WRONG")
 
-    # Use correct login button
-    page.click("#login-button")
+    username_input.wait_for(state="visible")
 
-    # Verify login succeeded
-    assert page.url == "https://www.saucedemo.com/inventory.html"
+    username_input.fill("standard_user")
 
-    # 🔴 BROKEN: correct is #add-to-cart-sauce-labs-backpack
-    page.click("#add-to-cart-sauce-labs-backpack")
+    # ─────────────────────────────────────────────
+    # 🔴 BROKEN PASSWORD LOCATOR
+    # Correct = #password
+    # ─────────────────────────────────────────────
 
-    print("\n[SUCCESS] Demo passed — Ghost Healer successfully healed the broken locators!")
+    password_input = page.locator("#password-WRONG")
+
+    password_input.fill("secret_sauce")
+
+    # ─────────────────────────────────────────────
+    # 🔴 BROKEN LOGIN BUTTON
+    # Correct = #login-button
+    # ─────────────────────────────────────────────
+
+    login_button = page.locator("#login-button-WRONG")
+
+    login_button.click()
+
+    # ─────────────────────────────────────────────
+    # Validate login success
+    # ─────────────────────────────────────────────
+
+    assert (
+        page.url
+        == "https://www.saucedemo.com/inventory.html"
+    )
+
+    # ─────────────────────────────────────────────
+    # 🔴 BROKEN ADD TO CART BUTTON
+    # Correct = #add-to-cart-sauce-labs-backpack
+    # ─────────────────────────────────────────────
+
+    add_to_cart = page.locator(
+        "#add-to-cart-sauce-labs-backpack-WRONG"
+    )
+
+    add_to_cart.click()
+
+    print(
+        "\n[SUCCESS] Ghost Healer Locator API validation passed."
+    )

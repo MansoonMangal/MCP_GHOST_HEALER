@@ -1,45 +1,101 @@
 /**
  * 👻 Ghost Healer Demo — Selenium JavaScript (ZERO test code changes)
  *
- * Standard selenium-webdriver JS test. No Ghost Healer imports.
+ * Standard selenium-webdriver JS test.
+ * No Ghost Healer imports.
+ * No wrappers.
+ * No custom APIs.
  *
- * MINIMUM CHANGE — add to .mocharc.js or jest.config.js:
+ * Healing activates globally via:
+ *
+ * .mocharc.js
+ * ----------------
+ * module.exports = {
  *   require: ['ghost-healer-ts/selenium-setup']
+ * };
  *
- * Run: npx mocha demo/selenium-js/test_demo.spec.js
+ * Run:
+ *   npx mocha demo/selenium-js/test_demo.spec.js
  */
+
 const { Builder, By } = require('selenium-webdriver');
 const { Options } = require('selenium-webdriver/chrome');
 const assert = require('assert');
 
-describe('Selenium JS — Ghost healing demo', function() {
-  this.timeout(30000); // 👻 Increase timeout for AI healing
+describe('👻 Selenium JS — Ghost healing demo', function () {
+
+  // Give AI healing enough retry time
+  this.timeout(60000);
+
   let driver;
 
   before(async () => {
+
     const opts = new Options();
-    opts.addArguments('--no-sandbox', '--disable-dev-shm-usage');
+
+    opts.addArguments(
+      '--no-sandbox',
+      '--disable-dev-shm-usage'
+    );
+
     driver = await new Builder()
       .forBrowser('chrome')
       .setChromeOptions(opts)
       .build();
-    // NO protect_driver() — WebDriver.prototype already patched by setup require
+
+    // 👻 NO Ghost wrapper
+    // 👻 NO protectDriver()
+    // Ghost patches WebDriver.prototype automatically
   });
 
   after(async () => {
-    await driver.quit();
+
+    if (driver) {
+      await driver.quit();
+    }
   });
 
   it('should login despite broken locators', async () => {
+
     await driver.get('https://www.saucedemo.com/');
 
-    // Standard findElement — broken, Ghost heals silently
-    await (await driver.findElement(By.css('#user-name'))).sendKeys('standard_user');
-    await (await driver.findElement(By.css('#password'))).sendKeys('secret_sauce');
-    await (await driver.findElement(By.id('login-button'))).click();
+    // 🔴 BROKEN: correct = #user-name
+    await (
+      await driver.findElement(
+        By.css('#user-name-WRONG')
+      )
+    ).sendKeys('standard_user');
+
+    // 🔴 BROKEN: correct = #password
+    await (
+      await driver.findElement(
+        By.css('#password-WRONG')
+      )
+    ).sendKeys('secret_sauce');
+
+    // 🔴 BROKEN: correct = #login-button
+    await (
+      await driver.findElement(
+        By.id('login-button-WRONG')
+      )
+    ).click();
 
     const url = await driver.getCurrentUrl();
-    assert.ok(url.includes('inventory'), `Expected inventory, got: ${url}`);
-    console.log('[SUCCESS] Selenium + JS: Passed with zero Ghost Healer code in test!');
+
+    assert.ok(
+      url.includes('inventory'),
+      `Expected inventory page, got: ${url}`
+    );
+
+    // 🔴 BROKEN: correct = #add-to-cart-sauce-labs-backpack
+    await (
+      await driver.findElement(
+        By.css('#add-to-cart-sauce-labs-backpack-WRONG')
+      )
+    ).click();
+
+    console.log(
+      '\n[SUCCESS] Selenium + JS passed with fully broken locators!'
+    );
   });
 });

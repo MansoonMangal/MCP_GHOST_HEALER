@@ -13,12 +13,131 @@
  */
 
 import { WebDriver, By } from 'selenium-webdriver';
-import { sourceHealer } from './SourceHealer';
+import * as fs from 'fs';
+import * as path from 'path';
 
 const BRAIN_URL =
   process.env['GHOST_BRAIN_URL'] || 'https://ghost-healer-brain.onrender.com';
 const CONFIDENCE_THRESHOLD = parseFloat(process.env['GHOST_CONFIDENCE'] || '0.5');
 const MAX_RETRIES = parseInt(process.env['GHOST_MAX_RETRIES'] || '3');
+
+const SESSION_ID = (function() {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+})();
+
+function findCallerFile(): { file: string | null; line: number } {
+  const err = new Error();
+  const stack = err.stack;
+  if (!stack) return { file: null, line: 0 };
+  const lines = stack.split('\n');
+  for (const line of lines) {
+    const match = line.match(/\((.*):(\d+):(\d+)\)/) || line.match(/at (.*):(\d+):(\d+)/);
+    if (match) {
+      const filePath = match[1];
+      const lineNo = parseInt(match[2], 10) || 0;
+      const isInternal = filePath.includes('node_modules') || 
+                        filePath.includes('selenium-setup') || 
+                        filePath.includes('pw-hook.js') || 
+                        filePath.includes('setup.ts');
+      
+      if (!isInternal && fs.existsSync(filePath)) {
+        return { file: filePath, line: lineNo };
+      }
+    }
+  }
+  return { file: null, line: 0 };
+}
+
+function getISTTimestamp(): string {
+  const date = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(date.getTime() + istOffset);
+  return istDate.toISOString().replace('Z', '+05:30');
+}
+
+function findWorkspaceRoot(): string {
+  let currentDir = process.cwd();
+  while (true) {
+    if (fs.existsSync(path.join(currentDir, 'ghost.yaml')) || fs.existsSync(path.join(currentDir, '.git'))) {
+      return currentDir;
+    }
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      return path.resolve(__dirname, '../../..');
+    }
+    currentDir = parentDir;
+  }
+}
+
+// Clear server log for selenium session
+(function clearServerLog() {
+  try {
+    const workspaceRoot = findWorkspaceRoot();
+    const mcpLogPath = path.join(workspaceRoot, 'reports', 'logs', 'mcp_server.log');
+    if (fs.existsSync(mcpLogPath)) {
+      fs.writeFileSync(mcpLogPath, '');
+      console.log('🧹 [GHOST] Cleared mcp_server.log for new run');
+    }
+  } catch (e) {}
+})();
+
+function writeToReport(oldSelector: string, newSelector: string, action: string, fileInfo: { file: string | null; line: number }, url: string, confidence: number, latencyMs: number = 0) {
+  try {
+    const reportDir = path.join(findWorkspaceRoot(), 'reports', 'ghost');
+    fs.mkdirSync(reportDir, { recursive: true });
+    
+    // 1. Write to global suggested-fixes.json
+    const reportFile = path.join(reportDir, 'suggested-fixes.json');
+    let data: any[] = [];
+    if (fs.existsSync(reportFile)) {
+      try { data = JSON.parse(fs.readFileSync(reportFile, 'utf8')); } catch(e){}
+    }
+    data.unshift({
+      timestamp: getISTTimestamp(),
+      framework: "selenium",
+      language: "javascript/typescript",
+      file: fileInfo.file,
+      line: fileInfo.line,
+      action: action,
+      old_locator: oldSelector,
+      suggested_locator: newSelector,
+      confidence: confidence || 0.0,
+      page_url: url
+    });
+    fs.writeFileSync(reportFile, JSON.stringify(data, null, 2), 'utf8');
+    console.log(`[GHOST] 📄 Logged suggestion to global report: suggested-fixes.json`);
+
+    // 2. Write to session_<session_id>.json
+    const sessionFile = path.join(reportDir, `session_${SESSION_ID}.json`);
+    let sessionData: any[] = [];
+    if (fs.existsSync(sessionFile)) {
+      try { sessionData = JSON.parse(fs.readFileSync(sessionFile, 'utf8')); } catch(e){}
+    }
+    sessionData.unshift({
+      timestamp: getISTTimestamp(),
+      session_id: SESSION_ID,
+      framework: "selenium-js",
+      language: "javascript/typescript",
+      file: fileInfo.file,
+      line: fileInfo.line,
+      action: action,
+      old_locator: oldSelector,
+      suggested_locator: newSelector,
+      confidence: confidence || 0.0,
+      page_url: url,
+      decision: "AUTO_HEAL",
+      latency_ms: Number((latencyMs).toFixed(2)),
+      retry_count: 0,
+      healing_mode: "runtime"
+    });
+    fs.writeFileSync(sessionFile, JSON.stringify(sessionData, null, 2), 'utf8');
+    console.log(`[GHOST] 📂 Logged session details to audit trail: session_${SESSION_ID}.json`);
+  } catch (e: any) {
+    console.error(`[GHOST] Failed to write report: ${e.message}`);
+  }
+}
 
 // ── Brain communication ────────────────────────────────────────────────────────
 
@@ -27,14 +146,14 @@ async function consultBrain(
   action: string,
   dom: string,
   url: string
-): Promise<string | null> {
+): Promise<{ healed_locator: string; confidence: number } | null> {
   console.log(`[GHOST] Consulting brain at ${BRAIN_URL}...`);
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       const resp = await fetch(`${BRAIN_URL}/api/heal-locator`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selector, action, dom_snapshot: dom, page_url: url }),
+        body: JSON.stringify({ selector, action, dom_snapshot: dom, page_url: url, framework: "selenium-js" }),
         signal: AbortSignal.timeout(30000),
       });
       if (!resp.ok) {
@@ -45,7 +164,7 @@ async function consultBrain(
       console.log(`[GHOST] Brain response: ${JSON.stringify(data)}`);
       if (data.healed_locator && data.confidence >= CONFIDENCE_THRESHOLD) {
         console.log(`[GHOST] Healed '${selector}' → '${data.healed_locator}' (${(data.confidence * 100).toFixed(1)}%)`);
-        return data.healed_locator as string;
+        return { healed_locator: data.healed_locator as string, confidence: data.confidence as number };
       }
       console.log(`[GHOST] Brain rejected heal. Confidence: ${data.confidence}, Threshold: ${CONFIDENCE_THRESHOLD}`);
       return null;
@@ -100,10 +219,12 @@ proto.findElement = async function (locator: any) {
     try {
       const dom: string = await this.getPageSource();
       const url: string = await this.getCurrentUrl();
-      const healed = await consultBrain(selector, 'click', dom, url);
-      if (healed) {
-        sourceHealer.applyFix(selector, healed);
-        return await _originalFindElement.call(this, By.css(healed));
+      const startTime = Date.now();
+      const result = await consultBrain(selector, 'find', dom, url);
+      if (result) {
+        const latencyMs = Date.now() - startTime;
+        writeToReport(selector, result.healed_locator, 'click', findCallerFile(), url, result.confidence, latencyMs);
+        return await _originalFindElement.call(this, By.css(result.healed_locator));
       }
     } catch (brainError) {
       console.error(`[GHOST] Brain error: ${brainError}`);
@@ -120,12 +241,16 @@ proto.findElements = async function (locator: any) {
     throw new Error('No elements found');
   } catch (originalError) {
     const selector = locatorToString(locator);
+    console.log(`[GHOST] findElements failed for '${selector}'. Consulting AI Brain...`);
     try {
       const dom: string = await this.getPageSource();
       const url: string = await this.getCurrentUrl();
-      const healed = await consultBrain(selector, 'click', dom, url);
-      if (healed) {
-        return await _originalFindElements.call(this, By.css(healed));
+      const startTime = Date.now();
+      const result = await consultBrain(selector, 'find', dom, url);
+      if (result) {
+        const latencyMs = Date.now() - startTime;
+        writeToReport(selector, result.healed_locator, 'click', findCallerFile(), url, result.confidence, latencyMs);
+        return await _originalFindElements.call(this, By.css(result.healed_locator));
       }
     } catch { /* ignore */ }
     throw originalError;

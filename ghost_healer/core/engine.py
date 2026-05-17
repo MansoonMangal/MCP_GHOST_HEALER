@@ -42,7 +42,9 @@ class GhostEngine:
                     
                     if response.status_code == 200:
                         data = response.json()
-                        confidence = data.get("confidence", 0.0)
+                        confidence = data.get("confidence") or data.get("confidence_score") or 0.0
+                        if confidence > 1.0:
+                            confidence = confidence / 100.0
                         healed = data.get("healed_locator")
 
                         if confidence < self.threshold:

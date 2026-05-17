@@ -4,8 +4,6 @@ import org.junit.jupiter.api.extension.*;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.events.EventFiringDecorator;
-import org.openqa.selenium.support.events.WebDriverListener;
 
 import java.lang.reflect.*;
 import java.net.URI;
@@ -16,27 +14,19 @@ import java.time.Duration;
  * 👻 Ghost Healer — JUnit 5 Extension
  *
  * Automatically wraps ANY WebDriver field annotated with @GhostDriver
- * with AI self-healing. Zero changes to test logic.
- *
- * USAGE — Add ONE annotation to your BaseTest or test class:
- *
- *   @ExtendWith(GhostHealerExtension.class)
- *   public class BaseTest {
- *
- *       @GhostDriver                        // ← mark your driver field
- *       protected WebDriver driver;
- *
- *       @BeforeEach
- *       void setUp() {
- *           driver = new ChromeDriver();    // set it as usual
- *       }
- *   }
- *
- * ALL find_element / find_elements calls in every subclass test
- * are automatically self-healing — NO other changes needed.
+ * with a dynamic proxy for active AI self-healing interceptors.
  */
 public class GhostHealerExtension
         implements BeforeTestExecutionCallback, AfterEachCallback {
+
+    private static final String BRAIN_URL =
+        System.getenv().getOrDefault(
+            "GHOST_BRAIN_URL",
+            "http://localhost:8000"
+        );
+        
+    private static final String SESSION_ID = java.time.LocalDateTime.now()
+        .format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
 
     static {
         System.out.println("[GHOST] GhostHealerExtension class loaded.");
@@ -44,12 +34,6 @@ public class GhostHealerExtension
 
     public GhostHealerExtension() {
     }
-
-    private static final String BRAIN_URL =
-        System.getenv().getOrDefault(
-            "GHOST_BRAIN_URL",
-            "https://ghost-healer-brain.onrender.com"
-        );
 
     @Override
     public void beforeTestExecution(ExtensionContext context) throws Exception {
@@ -60,7 +44,6 @@ public class GhostHealerExtension
 
     @Override
     public void afterEach(ExtensionContext context) {
-        // Could finalize reporting here in future
     }
 
     // ── Field scanner ─────────────────────────────────────────────────────────
@@ -78,7 +61,7 @@ public class GhostHealerExtension
                     if (original != null) {
                         WebDriver wrapped = wrap(original);
                         field.set(instance, wrapped);
-                        System.out.println("[GHOST] WebDriver field '" + field.getName() + "' wrapped with AI healing.");
+                        System.out.println("[GHOST] WebDriver field '" + field.getName() + "' wrapped with active dynamic proxy.");
                     }
                 }
             }
@@ -88,74 +71,124 @@ public class GhostHealerExtension
 
     public static WebDriver wrap(WebDriver driver) {
         if (driver == null) return null;
-        System.out.println("[GHOST] Wrapping driver with WebDriverListener...");
-        return new EventFiringDecorator<>(new GhostListener(driver)).decorate(driver);
+        
+        java.util.Set<Class<?>> interfaces = new java.util.HashSet<>();
+        Class<?> clazz = driver.getClass();
+        while (clazz != null) {
+            for (Class<?> iface : clazz.getInterfaces()) {
+                interfaces.add(iface);
+            }
+            clazz = clazz.getSuperclass();
+        }
+        
+        System.out.println("[GHOST] Wrapping driver with active dynamic healing proxy...");
+        return (WebDriver) Proxy.newProxyInstance(
+            driver.getClass().getClassLoader(),
+            interfaces.toArray(new Class<?>[0]),
+            new HealingDriverHandler(driver)
+        );
     }
 
-    private static class GhostListener implements WebDriverListener {
-        private final WebDriver driver;
+    static class HealingDriverHandler implements InvocationHandler {
+        private final WebDriver realDriver;
         private final GhostHealerExtension healer = new GhostHealerExtension();
 
-        public GhostListener(WebDriver driver) {
-            this.driver = driver;
+        HealingDriverHandler(WebDriver realDriver) {
+            this.realDriver = realDriver;
         }
 
         @Override
-        public void onError(Object target, Method method, Object[] args, InvocationTargetException e) {
-            Throwable cause = e.getCause();
-            String msg = "[GHOST] onError: " + method.getName();
-            if (cause != null) msg += " threw " + cause.getClass().getName();
-            
-            try {
-                java.nio.file.Files.write(java.nio.file.Paths.get("ghost_debug.txt"), 
-                    (msg + "\n").getBytes(), 
-                    java.nio.file.StandardOpenOption.CREATE, 
-                    java.nio.file.StandardOpenOption.APPEND);
-            } catch (Exception ex) {}
+        public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+            String methodName = method.getName();
 
-            if (cause != null && cause.getClass().getName().contains("NoSuchElementException")) {
-                if ("findElement".equals(method.getName()) && args != null && args.length == 1) {
-                    By by = (By) args[0];
-                    healer.healingFindElement(driver, by); // Trigger healing
+            if ("findElement".equals(methodName) && args != null && args.length == 1 && args[0] instanceof By) {
+                By by = (By) args[0];
+                try {
+                    return method.invoke(realDriver, args);
+                } catch (InvocationTargetException e) {
+                    Throwable cause = e.getCause();
+                    if (cause != null && cause.getClass().getName().contains("NoSuchElementException")) {
+                        System.out.printf("[GHOST] driver.findElement(%s) failed. Consulting AI Brain...%n", by);
+                        WebElement healed = healer.healingFindElement(realDriver, by);
+                        if (healed != null) {
+                            return healed;
+                        }
+                    }
+                    throw cause != null ? cause : e;
                 }
+            }
+
+            try {
+                return method.invoke(realDriver, args);
+            } catch (InvocationTargetException e) {
+                throw e.getCause() != null ? e.getCause() : e;
             }
         }
     }
 
     // ── Healing logic ─────────────────────────────────────────────────────────
 
-    private WebElement healingFindElement(WebDriver driver, By by) {
-        try {
-            return driver.findElement(by);
-        } catch (Exception originalError) {
-            String selectorStr = by.toString();
-            // Handle By.id: iron -> iron
-            String rawSelector = selectorStr;
-            if (selectorStr.contains(": ")) {
-                rawSelector = selectorStr.substring(selectorStr.indexOf(": ") + 2);
-            }
-            
-            System.out.println("[GHOST] findElement failed for: " + selectorStr + ". Consulting AI Brain...");
-
-            try {
-                String dom = driver.getPageSource();
-                String url = driver.getCurrentUrl();
-                String healed = consultBrain(rawSelector, "click", dom, url);
-
-                if (healed != null) {
-                    System.out.println("[GHOST] Healed: " + rawSelector + " → " + healed);
-                    applySourcePatch(rawSelector, healed);
-                    return driver.findElement(By.cssSelector(healed));
-                }
-            } catch (Exception brainError) {
-                System.err.println("[GHOST] Brain error: " + brainError.getMessage());
-            }
-
-            throw originalError;
+    private String getNormalizedSelector(By by) {
+        String selectorStr = by.toString();
+        if (selectorStr.startsWith("By.id: ")) {
+            return "#" + selectorStr.substring(7);
         }
+        if (selectorStr.startsWith("By.className: ")) {
+            return "." + selectorStr.substring(14);
+        }
+        if (selectorStr.startsWith("By.name: ")) {
+            return "[name='" + selectorStr.substring(9) + "']";
+        }
+        if (selectorStr.startsWith("By.tagName: ")) {
+            return selectorStr.substring(12);
+        }
+        if (selectorStr.contains(": ")) {
+            return selectorStr.substring(selectorStr.indexOf(": ") + 2);
+        }
+        return selectorStr;
     }
 
-    private void applySourcePatch(String oldSelector, String newSelector) {
+    public WebElement healingFindElement(WebDriver driver, By by) {
+        String selectorStr = by.toString();
+        String originalRawValue = selectorStr;
+        if (selectorStr.contains(": ")) {
+            originalRawValue = selectorStr.substring(selectorStr.indexOf(": ") + 2);
+        }
+        
+        String normalizedSelector = getNormalizedSelector(by);
+        System.out.printf("[GHOST] Normalized selector for AI: %s -> %s%n", selectorStr, normalizedSelector);
+        
+        try {
+            String dom = driver.getPageSource();
+            String url = driver.getCurrentUrl();
+            long startTime = System.currentTimeMillis();
+            HealedInfo healed = consultBrain(normalizedSelector, "find", dom, url);
+
+            if (healed != null) {
+                long latencyMs = System.currentTimeMillis() - startTime;
+                System.out.println("[GHOST] Healed: " + normalizedSelector + " → " + healed.healedLocator);
+                
+                String patchedOld = originalRawValue;
+                String patchedNew = healed.healedLocator;
+                if (selectorStr.startsWith("By.id: ") && patchedNew.startsWith("#")) {
+                    patchedNew = patchedNew.substring(1);
+                } else if (selectorStr.startsWith("By.className: ") && patchedNew.startsWith(".")) {
+                    patchedNew = patchedNew.substring(1);
+                }
+                
+                String absolutePath = applySourcePatch(patchedOld, patchedNew);
+                
+                writeToReport(driver, originalRawValue, healed.healedLocator, "click", absolutePath, url, healed.confidence, latencyMs);
+                
+                return driver.findElement(By.cssSelector(healed.healedLocator));
+            }
+        } catch (Exception brainError) {
+            System.err.println("[GHOST] Brain error: " + brainError.getMessage());
+        }
+        return null;
+    }
+
+    private String applySourcePatch(String oldSelector, String newSelector) {
         try {
             StackTraceElement[] stack = Thread.currentThread().getStackTrace();
             String testFileName = null;
@@ -175,10 +208,17 @@ public class GhostHealerExtension
 
             if (testFileName == null) {
                 System.out.println("[GHOST] [SourceHealer] Could not determine test file from stack trace.");
-                return;
+                return null;
             }
 
             java.nio.file.Path projectRoot = java.nio.file.Paths.get("").toAbsolutePath();
+            while (projectRoot != null && !java.nio.file.Files.exists(projectRoot.resolve("ghost.yaml"))) {
+                projectRoot = projectRoot.getParent();
+            }
+            if (projectRoot == null) {
+                projectRoot = java.nio.file.Paths.get("").toAbsolutePath();
+            }
+
             System.out.println("[GHOST] [SourceHealer] Searching for " + testFileName + " in " + projectRoot);
             final String finalName = testFileName;
             java.nio.file.Path found = java.nio.file.Files.walk(projectRoot)
@@ -189,33 +229,197 @@ public class GhostHealerExtension
             if (found != null) {
                 System.out.println("[GHOST] [SourceHealer] Found file: " + found.toAbsolutePath());
                 String content = new String(java.nio.file.Files.readAllBytes(found), java.nio.charset.StandardCharsets.UTF_8);
+                
                 String pattern1 = "\"" + oldSelector + "\"";
                 String replace1 = "\"" + newSelector + "\"";
+                String pattern2 = "'" + oldSelector + "'";
+                String replace2 = "'" + newSelector + "'";
                 
+                boolean changed = false;
                 if (content.contains(pattern1)) {
                     content = content.replace(pattern1, replace1);
+                    changed = true;
+                } else if (content.contains(pattern2)) {
+                    content = content.replace(pattern2, replace2);
+                    changed = true;
+                }
+
+                if (changed) {
                     java.nio.file.Files.write(found, content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
                     System.out.printf("[GHOST] ✅ Permanently patched: %s ('%s' -> '%s')%n", 
                         found.getFileName(), oldSelector, newSelector);
                 } else {
-                    System.out.println("[GHOST] [SourceHealer] Pattern " + pattern1 + " not found in file content.");
+                    System.out.println("[GHOST] [SourceHealer] Selector not found in file content.");
                 }
+                return found.toAbsolutePath().toString();
             } else {
                 System.out.println("[GHOST] [SourceHealer] File " + testFileName + " not found on disk.");
             }
         } catch (Exception e) {
             System.out.println("[GHOST] [SourceHealer] Patching failed: " + e.getMessage());
         }
+        return null;
     }
 
-    private String consultBrain(String selector, String action, String dom, String url) {
+    private void writeToReport(WebDriver driver, String oldSelector, String newSelector, String action, String filePath, String pageUrl, double confidence, long latencyMs) {
+        try {
+            java.nio.file.Path rootDir = java.nio.file.Paths.get("").toAbsolutePath();
+            while (rootDir != null && !java.nio.file.Files.exists(rootDir.resolve("ghost.yaml"))) {
+                rootDir = rootDir.getParent();
+            }
+            if (rootDir == null) {
+                rootDir = java.nio.file.Paths.get("").toAbsolutePath();
+            }
+            
+            java.nio.file.Path reportDir = rootDir.resolve("reports").resolve("ghost");
+            java.nio.file.Files.createDirectories(reportDir);
+            
+            StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+            String testFileName = null;
+            int lineNo = 0;
+            for (StackTraceElement element : stack) {
+                String fileName = element.getFileName();
+                String className = element.getClassName();
+                if (fileName != null && fileName.endsWith(".java") 
+                    && !className.startsWith("java.") 
+                    && !className.startsWith("jdk.")
+                    && !className.startsWith("com.ghosthealer.core.GhostHealerExtension")
+                    && !className.startsWith("com.ghosthealer.core.GhostDriver")
+                    && !className.startsWith("com.sun.proxy")) {
+                    testFileName = fileName;
+                    lineNo = element.getLineNumber();
+                    break;
+                }
+            }
+
+            // 1. Write to global suggested-fixes.json
+            java.nio.file.Path reportFile = reportDir.resolve("suggested-fixes.json");
+            String content = "[]";
+            if (java.nio.file.Files.exists(reportFile)) {
+                content = new String(java.nio.file.Files.readAllBytes(reportFile), java.nio.charset.StandardCharsets.UTF_8);
+            }
+            
+            java.time.ZonedDateTime nowIST = java.time.ZonedDateTime.now(java.time.ZoneId.of("Asia/Kolkata"));
+            String timestamp = nowIST.format(java.time.format.DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            
+            String escapedFilePath = filePath != null ? filePath.replace("\\", "\\\\") : (testFileName != null ? testFileName : "null");
+
+            String newEntryGlobal = String.format(
+                "  {\n" +
+                "    \"timestamp\": \"%s\",\n" +
+                "    \"framework\": \"selenium\",\n" +
+                "    \"language\": \"java\",\n" +
+                "    \"file\": %s,\n" +
+                "    \"line\": %s,\n" +
+                "    \"action\": \"%s\",\n" +
+                "    \"old_locator\": \"%s\",\n" +
+                "    \"suggested_locator\": \"%s\",\n" +
+                "    \"confidence\": %.4f,\n" +
+                "    \"page_url\": \"%s\"\n" +
+                "  }",
+                timestamp,
+                "\"" + escapedFilePath + "\"",
+                lineNo > 0 ? String.valueOf(lineNo) : "null",
+                action,
+                escape(oldSelector),
+                escape(newSelector),
+                confidence,
+                escape(pageUrl)
+            );
+            
+            content = content.trim();
+            if (content.equals("[]") || content.isEmpty()) {
+                content = "[\n" + newEntryGlobal + "\n]";
+            } else if (content.startsWith("[") && content.endsWith("]")) {
+                String inside = content.substring(1, content.length() - 1).trim();
+                if (inside.isEmpty()) {
+                    content = "[\n" + newEntryGlobal + "\n]";
+                } else {
+                    content = "[\n" + newEntryGlobal + ",\n" + inside + "\n]";
+                }
+            }
+            
+            java.nio.file.Files.write(reportFile, content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            System.out.printf("[GHOST] 📄 Logged suggestion to global report: %s%n", reportFile.getFileName());
+
+            // 2. Write to session_<session_id>.json
+            java.nio.file.Path sessionFile = reportDir.resolve("session_" + SESSION_ID + ".json");
+            String sessionContent = "[]";
+            if (java.nio.file.Files.exists(sessionFile)) {
+                sessionContent = new String(java.nio.file.Files.readAllBytes(sessionFile), java.nio.charset.StandardCharsets.UTF_8);
+            }
+
+            String newEntrySession = String.format(
+                "  {\n" +
+                "    \"timestamp\": \"%s\",\n" +
+                "    \"session_id\": \"%s\",\n" +
+                "    \"framework\": \"selenium-java\",\n" +
+                "    \"language\": \"java\",\n" +
+                "    \"file\": %s,\n" +
+                "    \"line\": %s,\n" +
+                "    \"action\": \"%s\",\n" +
+                "    \"old_locator\": \"%s\",\n" +
+                "    \"suggested_locator\": \"%s\",\n" +
+                "    \"confidence\": %.4f,\n" +
+                "    \"page_url\": \"%s\",\n" +
+                "    \"decision\": \"AUTO_HEAL\",\n" +
+                "    \"latency_ms\": %.2f,\n" +
+                "    \"retry_count\": 0,\n" +
+                "    \"healing_mode\": \"runtime\"\n" +
+                "  }",
+                timestamp,
+                SESSION_ID,
+                "\"" + escapedFilePath + "\"",
+                lineNo > 0 ? String.valueOf(lineNo) : "null",
+                action,
+                escape(oldSelector),
+                escape(newSelector),
+                confidence,
+                escape(pageUrl),
+                (double) latencyMs
+            );
+
+            sessionContent = sessionContent.trim();
+            if (sessionContent.equals("[]") || sessionContent.isEmpty()) {
+                sessionContent = "[\n" + newEntrySession + "\n]";
+            } else if (sessionContent.startsWith("[") && sessionContent.endsWith("]")) {
+                String inside = sessionContent.substring(1, sessionContent.length() - 1).trim();
+                if (inside.isEmpty()) {
+                    sessionContent = "[\n" + newEntrySession + "\n]";
+                } else {
+                    sessionContent = "[\n" + newEntrySession + ",\n" + inside + "\n]";
+                }
+            }
+            java.nio.file.Files.write(sessionFile, sessionContent.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            System.out.printf("[GHOST] 📂 Logged session details to audit trail: %s%n", sessionFile.getFileName());
+
+        } catch (Exception e) {
+            System.out.println("[GHOST] Failed to write report files: " + e.getMessage());
+        }
+    }
+
+    private static String escape(String s) {
+        return s.replace("\\", "\\\\").replace("\"", "\\\"")
+                .replace("\n", " ").replace("\r", "");
+    }
+
+    private static class HealedInfo {
+        String healedLocator;
+        double confidence;
+        HealedInfo(String healedLocator, double confidence) {
+            this.healedLocator = healedLocator;
+            this.confidence = confidence;
+        }
+    }
+
+    private HealedInfo consultBrain(String selector, String action, String dom, String url) {
         try {
             String body = String.format(
                 "{\"selector\":\"%s\",\"action\":\"%s\",\"dom_snapshot\":\"%s\",\"page_url\":\"%s\"}",
-                selector.replace("\"", "\\\""),
+                escape(selector),
                 action,
-                dom.replace("\"", "\\\"").replace("\n", " ").substring(0, Math.min(dom.length(), 50000)),
-                url
+                escape(dom.length() > 50000 ? dom.substring(0, 50000) : dom),
+                escape(url)
             );
 
             HttpClient client = HttpClient.newBuilder()
@@ -236,9 +440,15 @@ public class GhostHealerExtension
                 String respBody = response.body();
                 String healed = extractJson(respBody, "healed_locator");
                 String confStr = extractJson(respBody, "confidence");
-                double confidence = confStr != null ? Double.parseDouble(confStr) : 0;
-                if (healed != null && !healed.equals("null") && confidence >= 0.0) {
-                    return healed;
+                if (confStr == null || confStr.equals("null")) {
+                    confStr = extractJson(respBody, "confidence_score");
+                }
+                double confidence = confStr != null ? Double.parseDouble(confStr) : 0.0;
+                if (confidence > 1.0) {
+                    confidence = confidence / 100.0;
+                }
+                if (healed != null && !healed.equals("null") && confidence >= 0.5) {
+                    return new HealedInfo(healed, confidence);
                 }
             }
         } catch (Exception e) {

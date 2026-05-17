@@ -22,6 +22,9 @@ def extract_features_from_selector(selector: str) -> Dict[str, Any]:
     We use Regular Expressions (Regex) to guess what the element *used to* look like
     so the AI knows what to search for.
     """
+    # Normalize and strip escaping backslashes from selector
+    selector = selector.replace('\\"', '"').replace("\\'", "'").replace('\\', '')
+
     features: Dict[str, Any] = {
         "tag_name": "",
         "text": "",
@@ -80,10 +83,14 @@ def extract_features_from_selector(selector: str) -> Dict[str, Any]:
         features["tag_name"] = tag_m.group(1).lower()
 
     # Attribute extraction  [attr="value"]
-    attr_m = re.findall(r"\[([^\]=]+)(?:=|~=|\|=)['\"]?([^'\"\\]]*)['\"]?\]", selector)
+    attr_m = re.findall(r"\[([^\]=]+)(?:=|~=|\|=)['\"]?([^'\"\]]*)['\"]?\]", selector)
     for attr_name, attr_value in attr_m:
         attr_name = attr_name.strip().lower().replace("-", "_")
-        if attr_name == "name":
+        if attr_name == "id":
+            features["id"] = attr_value
+        elif attr_name == "class":
+            features["class_list"] = attr_value.split()
+        elif attr_name == "name":
             features["name"] = attr_value
         elif attr_name == "type":
             features["type"] = attr_value

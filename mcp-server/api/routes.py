@@ -31,15 +31,18 @@ def heal_locator():
     Main healing endpoint.
     """
     data = request.json
-    logger.info(f"POST /heal-locator | test={data.get('test_name')} | locator={data.get('original_locator')}")
+    original_locator = data.get('original_locator') or data.get('selector')
+    test_name = data.get('test_name') or data.get('test')
+    
+    logger.info(f"POST /heal-locator | test={test_name} | locator={original_locator}")
     try:
         result = heal(
-            original_locator=data.get('original_locator'),
+            original_locator=original_locator,
             dom_snapshot=data.get('dom_snapshot'),
             failure_reason=data.get('failure_reason'),
             page_url=data.get('page_url'),
             action=data.get('action', 'click'),
-            test_name=data.get('test_name'),
+            test_name=test_name,
             element_hints=data.get('element_hints'),
         )
         
@@ -53,9 +56,13 @@ def heal_locator():
                 source_healer.apply_fix(
                     file_path=file_name,
                     line_number=line_num,
-                    old_locator=data.get('original_locator'),
+                    old_locator=original_locator,
                     new_locator=result.get('healed_locator')
                 )
+
+        # Normalize confidence to decimal (0.0 - 1.0) for older and newer client compatibility
+        if result and 'confidence_score' in result:
+            result['confidence'] = result['confidence_score'] / 100.0 if result['confidence_score'] > 1.0 else result['confidence_score']
 
         return jsonify(result)
     except Exception as e:

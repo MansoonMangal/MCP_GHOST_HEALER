@@ -20,7 +20,10 @@ class Settings:
 
     # ── Logging ──────────────────────────────────────────────────────────
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
-    log_file: str = os.getenv("LOG_FILE", "../reports/logs/mcp_server.log")
+    
+    # Dynamically resolve to workspace root to ensure it is always in reports/logs/mcp_server.log
+    _project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    log_file: str = os.getenv("LOG_FILE", os.path.join(_project_root, "reports", "logs", "mcp_server.log"))
 
     # ── Database ─────────────────────────────────────────────────────────
     db_path: str = os.getenv("DB_PATH", "database")

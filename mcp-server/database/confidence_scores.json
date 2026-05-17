@@ -830,5 +830,61 @@
     "decision": "AUTO_HEAL",
     "test_name": "Ghost_Mode_TS_SourceHeal",
     "timestamp": "2026-05-14T18:44:17.715176+00:00"
+  },
+  {
+    "healing_id": "0fd50260-27e2-4359-aef6-da72e29f5606",
+    "score": 74.47,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": null,
+    "timestamp": "2026-05-17T13:03:06.301661+00:00"
+  },
+  {
+    "healing_id": "3a1f5374-77ba-45cb-b153-052c0604b78a",
+    "score": 74.35,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": null,
+    "timestamp": "2026-05-17T13:03:06.667034+00:00"
+  },
+  {
+    "healing_id": "97b0531a-2f07-46d7-9b2f-a07151bc05d7",
+    "score": 73.7,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": null,
+    "timestamp": "2026-05-17T13:03:06.877710+00:00"
+  },
+  {
+    "healing_id": "79246612-bdec-4adf-8b02-f8e1f7494efb",
+    "score": 73.96,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": null,
+    "timestamp": "2026-05-17T13:05:19.481785+00:00"
+  },
+  {
+    "healing_id": "454a3d31-8ffa-43e2-9eab-5250ff4454a0",
+    "score": 73.79,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": null,
+    "timestamp": "2026-05-17T13:05:19.680237+00:00"
+  },
+  {
+    "healing_id": "f558eefd-78e3-4271-a40f-af6d710142c4",
+    "score": 73.29,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": null,
+    "timestamp": "2026-05-17T13:05:19.826454+00:00"
+  },
+  {
+    "healing_id": "7d96f332-c2d1-42d7-98bd-e088065903ed",
+    "score": 73.36,
+    "level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "test_name": null,
+    "timestamp": "2026-05-17T13:05:20.023386+00:00"
   }
 ]

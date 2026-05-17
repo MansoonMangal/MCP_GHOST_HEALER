@@ -1,10 +1,10 @@
 mcp_server:
-  url: "https://ghost-healer-brain.onrender.com"
+  url: "http://127.0.0.1:8000"
   timeout: 30
   confidence_threshold: 0.5
 
 healing:
-  mode: "suggestion"       # runtime | suggestion
+  mode: "runtime"          # runtime | suggestion
   cache_enabled: true      # Use local SQLite cache
   max_retries: 3           # Retries on cloud cold starts
   retry_wait_seconds: 5    # Base wait between retries

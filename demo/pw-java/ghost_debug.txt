@@ -7,3 +7,4 @@
 [GHOST] onError: findElement threw org.openqa.selenium.NoSuchElementException
 [GHOST] onError: findElement threw org.openqa.selenium.NoSuchElementException
 [GHOST] onError: findElement threw org.openqa.selenium.NoSuchElementException
+[GHOST] onError: findElement threw org.openqa.selenium.NoSuchElementException
