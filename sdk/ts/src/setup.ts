@@ -151,7 +151,7 @@ export async function ghostGlobalTeardown(): Promise<void> {
       }
 
       // Retry up to 3 times
-      let healedLocator = null;
+      let healedLocator: string | null = null;
       let confidence = 0;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {

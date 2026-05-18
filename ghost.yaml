@@ -1,7 +1,7 @@
 mcp_server:
-  url: "http://127.0.0.1:8000"
+  url: "https://ghost-healer-brain.onrender.com"
   timeout: 30
-  confidence_threshold: 0.5
+  confidence_threshold: -1.0
 
 healing:
   mode: "runtime"          # runtime | suggestion
