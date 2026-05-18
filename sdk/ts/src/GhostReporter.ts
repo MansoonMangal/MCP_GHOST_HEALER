@@ -13,7 +13,7 @@ import * as path from 'path';
 export interface HealedEntry {
   uuid: string;
   selector: string;
-  healed_locator: string;
+  healed_locator: string | null;
   confidence: number;
   action: string;
   url: string;
@@ -37,21 +37,23 @@ export class GhostReporter {
       try { existing = JSON.parse(fs.readFileSync(fixesFile, 'utf8')); } catch (_) {}
     }
     for (const e of entries) {
-      existing.unshift({
-        timestamp: e.timestamp,
-        session_id: e.session_id,
-        framework: 'playwright-ts',
-        language: 'javascript/typescript',
-        file: e.file,
-        line: e.line,
-        action: e.action,
-        old_locator: e.selector,
-        suggested_locator: e.healed_locator,
-        confidence: e.confidence,
-        page_url: e.url,
-        screenshot: e.screenshot_path,
-        source_patched: e.source_patched,
-      });
+      if (e.healed_locator) {
+        existing.unshift({
+          timestamp: e.timestamp,
+          session_id: e.session_id,
+          framework: 'playwright-ts',
+          language: 'javascript/typescript',
+          file: e.file,
+          line: e.line,
+          action: e.action,
+          old_locator: e.selector,
+          suggested_locator: e.healed_locator,
+          confidence: e.confidence,
+          page_url: e.url,
+          screenshot: e.screenshot_path,
+          source_patched: e.source_patched,
+        });
+      }
     }
     fs.writeFileSync(fixesFile, JSON.stringify(existing, null, 2), 'utf8');
 
@@ -77,11 +79,35 @@ export class GhostReporter {
           line: e.line,
           screenshot: e.screenshot_path,
           source_patched: e.source_patched,
-          decision: 'AUTO_HEAL',
+          decision: e.healed_locator ? 'AUTO_HEAL' : 'FAIL',
           healing_mode: 'deferred-parallel',
         });
       }
       fs.writeFileSync(reportFile, JSON.stringify(reportData, null, 2), 'utf8');
+    }
+
+    // ── Session report (session_${session_id}.json) ───────────────────────────
+    if (entries.length > 0) {
+      const sessionId = entries[0].session_id;
+      const sessionFile = path.join(reportDir, `session_${sessionId}.json`);
+      const sessionData = entries.map(e => ({
+        timestamp: e.timestamp,
+        session_id: e.session_id,
+        framework: 'playwright-ts',
+        language: 'javascript/typescript',
+        file: e.file,
+        line: e.line,
+        action: e.action,
+        old_locator: e.selector,
+        suggested_locator: e.healed_locator,
+        confidence: e.confidence,
+        page_url: e.url,
+        screenshot: e.screenshot_path,
+        source_patched: e.source_patched,
+        decision: e.healed_locator ? 'AUTO_HEAL' : 'FAIL',
+        healing_mode: 'deferred-parallel',
+      }));
+      fs.writeFileSync(sessionFile, JSON.stringify(sessionData, null, 2), 'utf8');
     }
   }
 

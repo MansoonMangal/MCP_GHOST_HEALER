@@ -8,7 +8,10 @@ from bs4 import Tag
 
 
 # Interactive HTML tags we care about for locator healing
-INTERACTIVE_TAGS = {"button", "a", "input", "select", "textarea", "label", "summary", "details"}
+INTERACTIVE_TAGS = {
+    "button", "a", "input", "select", "textarea", "label", "summary", "details",
+    "h1", "h2", "h3", "h4", "h5", "h6", "span", "div", "p", "i", "img"
+}
 
 
 # ── From selector string ──────────────────────────────────────────────────────

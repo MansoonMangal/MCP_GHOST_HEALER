@@ -105,6 +105,13 @@ def analyze_dom(
         features = extract_features_from_element(element, dom_path)
         features["sibling_context"] = sibling_ctx
 
+        # Skip empty container divs, spans, and paragraphs to keep candidate list performant
+        if element.name in ("div", "span", "p") and \
+           not features["text"] and not features["id"] and \
+           not features["data_qa"] and not features["data_testid"] and \
+           not features["aria_label"] and not features["role"]:
+            continue
+
         # Visibility heuristic: hidden inputs / display:none skipped
         style = (element.get("style") or "").lower()
         if "display:none" in style.replace(" ", "") or \

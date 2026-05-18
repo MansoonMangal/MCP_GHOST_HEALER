@@ -19,6 +19,7 @@
 
 import * as fs   from 'fs';
 import * as path from 'path';
+import * as yaml from 'js-yaml';
 import { chromium } from '@playwright/test';
 import { SourceHealer } from './SourceHealer';
 import { GhostReporter, HealedEntry } from './GhostReporter';
@@ -108,11 +109,34 @@ export async function ghostGlobalTeardown(): Promise<void> {
   // ── Read failures and call Brain ──────────────────────────────────────────
   const failureFiles = fs.readdirSync(queueDir).filter(f => f.startsWith('failure_'));
   const healedEntries: HealedEntry[] = [];
-  const brainUrl = process.env['GHOST_BRAIN_URL'] || 'https://ghost-healer-brain.onrender.com';
-  const confThreshold = 0.5;
+
+  // Load config
+  let config: any = {
+    mcp_server: { url: 'https://ghost-healer-brain.onrender.com', confidence_threshold: 0.5 },
+    healing: { auto_patch: true },
+  };
+  try {
+    const candidates = [
+      process.env.GHOST_CONFIG,
+      path.join(wsRoot, 'ghost.yaml'),
+      path.join(wsRoot, '../../ghost.yaml'),
+    ].filter(Boolean) as string[];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        const loaded = yaml.load(fs.readFileSync(p, 'utf8')) as any;
+        if (loaded) {
+          config = { ...config, ...loaded };
+          break;
+        }
+      }
+    }
+  } catch (_) {}
+
+  const brainUrl = process.env['GHOST_BRAIN_URL'] || config.mcp_server.url || 'https://ghost-healer-brain.onrender.com';
+  const confThreshold = parseFloat(String(config.mcp_server.confidence_threshold)) ?? 0.5;
 
   if (failureFiles.length > 0) {
-    console.log(`\n[GHOST] 🧠 Consulting AI Brain for ${failureFiles.length} failure(s)...`);
+    console.log(`\n[GHOST] 🧠 Consulting AI Brain for ${failureFiles.length} failure(s) at ${brainUrl}...`);
   }
 
   // Process failures in parallel
@@ -149,30 +173,40 @@ export async function ghostGlobalTeardown(): Promise<void> {
               healedLocator = data.healed_locator;
               confidence = data.confidence;
               break;
+            } else if (data.healed_locator) {
+              console.warn(`[GHOST] ⚠️  AI Brain suggested '${data.healed_locator}' but confidence ${data.confidence} is below threshold ${confThreshold}`);
+            } else {
+              console.warn(`[GHOST] ⚠️  AI Brain could not heal locator '${failure.selector}'. Decision: FAIL`);
             }
+          } else {
+            console.warn(`[GHOST] ⚠️  AI Brain returned HTTP status ${resp.status}`);
           }
-        } catch (_) {
-          await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
+        } catch (err: any) {
+          console.warn(`[GHOST] ⚠️  Connection to AI Brain failed (attempt ${attempt + 1}/3): ${err.message}`);
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
+          }
         }
       }
 
       if (healedLocator) {
         console.log(`[GHOST] 🧠 Brain healed '${failure.selector}' → '${healedLocator}' (${(confidence * 100).toFixed(1)}%)`);
-        healedEntries.push({
-          uuid: failure.uuid,
-          selector: failure.selector,
-          action: failure.action,
-          url: failure.url,
-          file: failure.file,
-          line: failure.line,
-          healed_locator: healedLocator,
-          confidence: confidence,
-          timestamp: failure.timestamp,
-          session_id: failure.session_id,
-          screenshot_path: failure.screenshot_path,
-          source_patched: false
-        });
       }
+      
+      healedEntries.push({
+        uuid: failure.uuid,
+        selector: failure.selector,
+        action: failure.action,
+        url: failure.url,
+        file: failure.file,
+        line: failure.line,
+        healed_locator: healedLocator,
+        confidence: confidence,
+        timestamp: failure.timestamp,
+        session_id: failure.session_id,
+        screenshot_path: failure.screenshot_path,
+        source_patched: false
+      });
     } catch (_) {
       // malformed file — skip
     }
@@ -181,22 +215,25 @@ export async function ghostGlobalTeardown(): Promise<void> {
   // ── Apply source patches ──────────────────────────────────────────────────
   let totalPatched = 0;
   const patchedFiles = new Set<string>();
+  const successfullyHealed = healedEntries.filter(e => e.healed_locator);
 
-  if (healedEntries.length > 0) {
-    console.log(`\n[GHOST] 🔧 Applying ${healedEntries.length} source patch(es)...\n`);
+  if (successfullyHealed.length > 0) {
+    console.log(`\n[GHOST] 🔧 Applying ${successfullyHealed.length} source patch(es)...\n`);
   }
 
   for (const entry of healedEntries) {
-    const result = SourceHealer.applyFix(
-      entry.file,
-      entry.line,
-      entry.selector,
-      entry.healed_locator,
-    );
-    entry.source_patched = result.success;
-    if (result.success) {
-      totalPatched++;
-      if (entry.file) patchedFiles.add(path.basename(entry.file));
+    if (entry.healed_locator) {
+      const result = SourceHealer.applyFix(
+        entry.file,
+        entry.line,
+        entry.selector,
+        entry.healed_locator,
+      );
+      entry.source_patched = result.success;
+      if (result.success) {
+        totalPatched++;
+        if (entry.file) patchedFiles.add(path.basename(entry.file));
+      }
     }
   }
 
@@ -207,7 +244,7 @@ export async function ghostGlobalTeardown(): Promise<void> {
   // ── Print summary banner ──────────────────────────────────────────────────
   GhostReporter.printSummary(
     totalFailures,
-    healedEntries.length,
+    successfullyHealed.length,
     totalPatched,
     patchedFiles,
     screenshotCount,
