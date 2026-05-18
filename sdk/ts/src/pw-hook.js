@@ -1,324 +1,332 @@
+/**
+ * 👻 Ghost Healer — pw-hook.js
+ *
+ * ARCHITECTURE: "Deferred Parallel Healing"
+ *
+ * When a locator fails:
+ *   1. Screenshot + DOM captured instantly (~100-300ms)
+ *   2. Brain request fired in BACKGROUND (non-blocking)
+ *   3. Failure queued to disk  → reports/ghost/.ghost_queue/
+ *   4. Original error re-thrown → Playwright marks step as failed and moves on
+ *   5. Rest of test suite continues WITHOUT any delay
+ *
+ * After ALL tests finish (globalTeardown):
+ *   6. All brain results collected from disk
+ *   7. SourceHealer patches source files locally
+ *   8. Full reports + summary banner printed
+ *
+ * How to activate (in playwright.config.ts):
+ *   require('ghost-healer-ts/pw-hook.js');
+ *
+ * Natural Playwright timeouts are PRESERVED — no 2s forced intercept.
+ */
+
+'use strict';
+
 const Module = require('module');
-const fs = require('fs');
-const path = require('path');
-const yaml = require('js-yaml');
+const fs     = require('fs');
+const path   = require('path');
+const yaml   = require('js-yaml');
 const originalLoad = Module._load;
 
-// ── Configuration ──────────────────────────────────────────────────────────
+// ── Configuration ────────────────────────────────────────────────────────────
+
 let config = {
   mcp_server: { url: 'https://ghost-healer-brain.onrender.com', confidence_threshold: 0.5 },
-  healing: { auto_patch: false }
+  healing: { auto_patch: true },
 };
 
 try {
-  const ghostYamlPath = process.env.GHOST_CONFIG || path.join(process.cwd(), '../../ghost.yaml');
-  if (fs.existsSync(ghostYamlPath)) {
-    const fileContent = fs.readFileSync(ghostYamlPath, 'utf8');
-    const yamlConfig = yaml.load(fileContent);
-    if (yamlConfig) config = { ...config, ...yamlConfig };
+  const ghostYamlPath =
+    process.env.GHOST_CONFIG ||
+    path.join(process.cwd(), 'ghost.yaml') ||
+    path.join(process.cwd(), '../../ghost.yaml');
+  const candidates = [
+    process.env.GHOST_CONFIG,
+    path.join(process.cwd(), 'ghost.yaml'),
+    path.join(process.cwd(), '../../ghost.yaml'),
+  ].filter(Boolean);
+  for (const p of candidates) {
+    if (p && fs.existsSync(p)) {
+      const loaded = yaml.load(fs.readFileSync(p, 'utf8'));
+      if (loaded) { config = { ...config, ...loaded }; break; }
+    }
   }
-} catch (e) {}
+} catch (_) {}
 
-const BRAIN_URL = process.env.GHOST_BRAIN_URL || config.mcp_server.url;
-const CONFIDENCE_THRESHOLD = config.mcp_server.confidence_threshold;
+const BRAIN_URL            = process.env.GHOST_BRAIN_URL || config.mcp_server.url;
+const CONFIDENCE_THRESHOLD = parseFloat(String(config.mcp_server.confidence_threshold)) || 0.5;
+const AUTO_PATCH           = config.healing.auto_patch !== false;
 
-const SESSION_ID = (function() {
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+const SESSION_ID = (() => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 })();
 
+// ── Per-worker in-flight brain promises ──────────────────────────────────────
 
-// ── Stack Parser & Reporter ────────────────────────────────────────────────
-function findCallerFile() {
-  const err = new Error();
-  const stack = err.stack;
-  if (!stack) return { file: null, line: 0 };
-  const lines = stack.split('\n');
-  for (const line of lines) {
-    const match = line.match(/\((.*):(\d+):(\d+)\)/) || line.match(/at (.*):(\d+):(\d+)/);
-    if (match) {
-      const filePath = match[1];
-      const lineNo = parseInt(match[2], 10) || 0;
-      const isInternal = filePath.includes('node_modules') || 
-                        filePath.includes('pw-hook.js') || 
-                        filePath.includes('setup.ts') ||
-                        filePath.includes('GhostLocator');
-      
-      if (!isInternal && fs.existsSync(filePath)) {
-        return { file: filePath, line: lineNo };
-      }
+/** @type {Promise<void>[]} */
+const _pendingBrainRequests = [];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function genId() {
+  return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+}
+
+function safeSelector(selector) {
+  return String(selector).replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 40);
+}
+
+function getISTTimestamp() {
+  const d = new Date();
+  return new Date(d.getTime() + 5.5 * 3600000).toISOString().replace('Z', '+05:30');
+}
+
+function findWorkspaceRoot() {
+  let dir = process.cwd();
+  for (let i = 0; i < 20; i++) {
+    if (fs.existsSync(path.join(dir, 'ghost.yaml')) || fs.existsSync(path.join(dir, '.git'))) {
+      return dir;
     }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return path.resolve(__dirname, '../../..');
+}
+
+function findCallerFile() {
+  const stack = (new Error()).stack || '';
+  for (const line of stack.split('\n')) {
+    const m = line.match(/\((.*):(\d+):\d+\)/) || line.match(/at (.*):(\d+):\d+/);
+    if (!m) continue;
+    const fp = m[1], ln = parseInt(m[2], 10) || 0;
+    const isInternal =
+      fp.includes('node_modules') ||
+      fp.includes('pw-hook') ||
+      fp.includes('setup.ts') ||
+      fp.includes('setup.js') ||
+      fp.includes('GhostLocator');
+    if (!isInternal && fs.existsSync(fp)) return { file: fp, line: ln };
   }
   return { file: null, line: 0 };
 }
 
-function getISTTimestamp() {
-    const date = new Date();
-    const istOffset = 5.5 * 60 * 60 * 1000;
-    const istDate = new Date(date.getTime() + istOffset);
-    return istDate.toISOString().replace('Z', '+05:30');
+function getQueueDir() {
+  return path.join(findWorkspaceRoot(), 'reports', 'ghost', '.ghost_queue');
 }
 
-function findWorkspaceRoot() {
-    let currentDir = process.cwd();
-    while (true) {
-        if (fs.existsSync(path.join(currentDir, 'ghost.yaml')) || fs.existsSync(path.join(currentDir, '.git'))) {
-            return currentDir;
-        }
-        const parentDir = path.dirname(currentDir);
-        if (parentDir === currentDir) {
-            return path.resolve(__dirname, '../../..');
-        }
-        currentDir = parentDir;
+// ── Source Healer (inline JS — no TS compilation needed at runtime) ──────────
+
+function applySourceFix(filePath, lineNumber, oldSelector, newSelector) {
+  if (!filePath || !fs.existsSync(filePath)) return false;
+  try {
+    const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+    const esc   = oldSelector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re    = new RegExp(`(['"])${esc}(['"])`, 'g');
+    let fixed = false, fixedLine = lineNumber;
+
+    if (lineNumber > 0 && lineNumber <= lines.length) {
+      const orig = lines[lineNumber - 1];
+      let upd = orig.replace(re, `$1${newSelector}$2`);
+      if (upd === orig) upd = orig.split(oldSelector).join(newSelector);
+      if (upd !== orig) { lines[lineNumber - 1] = upd; fixed = true; }
     }
-}
 
-// ── Eagerly Clear mcp_server.log at start of TS/JS test run ───────────
-(function clearServerLog() {
-    try {
-        const workspaceRoot = findWorkspaceRoot();
-        const mcpLogPath = path.join(workspaceRoot, 'reports', 'logs', 'mcp_server.log');
-        if (fs.existsSync(mcpLogPath)) {
-            fs.writeFileSync(mcpLogPath, '');
-            console.log('🧹 [GHOST] Cleared mcp_server.log for new run');
+    if (!fixed) {
+      for (let i = 0; i < lines.length; i++) {
+        if (lines[i].includes(oldSelector)) {
+          let upd = lines[i].replace(re, `$1${newSelector}$2`);
+          if (upd === lines[i]) upd = lines[i].split(oldSelector).join(newSelector);
+          lines[i] = upd; fixedLine = i + 1; fixed = true; break;
         }
-    } catch (e) {}
-})();
-
-function writeToReport(oldSelector, newSelector, action, fileInfo, url, confidence, latencyMs = 0) {
-    const reportDir = path.join(findWorkspaceRoot(), 'reports', 'ghost');
-    fs.mkdirSync(reportDir, { recursive: true });
-    
-    // 1. Write to global suggested-fixes.json
-    const reportFile = path.join(reportDir, 'suggested-fixes.json');
-    let data = [];
-    if (fs.existsSync(reportFile)) {
-        try { data = JSON.parse(fs.readFileSync(reportFile, 'utf8')); } catch(e){}
-    }
-    data.unshift({
-        timestamp: getISTTimestamp(),
-        framework: "playwright",
-        language: "javascript/typescript",
-        file: fileInfo.file,
-        line: fileInfo.line,
-        action: action,
-        old_locator: oldSelector,
-        suggested_locator: newSelector,
-        confidence: confidence || 0.0,
-        page_url: url
-    });
-    fs.writeFileSync(reportFile, JSON.stringify(data, null, 2), 'utf8');
-
-    // 2. Write to session_<session_id>.json
-    const sessionFile = path.join(reportDir, `session_${SESSION_ID}.json`);
-    let sessionData = [];
-    if (fs.existsSync(sessionFile)) {
-        try { sessionData = JSON.parse(fs.readFileSync(sessionFile, 'utf8')); } catch(e){}
-    }
-    sessionData.unshift({
-        timestamp: getISTTimestamp(),
-        session_id: SESSION_ID,
-        framework: "playwright-ts",
-        language: "javascript/typescript",
-        file: fileInfo.file,
-        line: fileInfo.line,
-        action: action,
-        old_locator: oldSelector,
-        suggested_locator: newSelector,
-        confidence: confidence || 0.0,
-        page_url: url,
-        decision: "AUTO_HEAL",
-        latency_ms: Number((latencyMs).toFixed(2)),
-        retry_count: 0,
-        healing_mode: "runtime"
-    });
-    fs.writeFileSync(sessionFile, JSON.stringify(sessionData, null, 2), 'utf8');
-    console.log(`[GHOST] 📂 Logged session details to audit trail: session_${SESSION_ID}.json`);
-}
-
-
-// ── Core Engine ────────────────────────────────────────────────────────────
-async function consultBrain(selector, action, domSnapshot, pageUrl) {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    try {
-      const resp = await fetch(`${BRAIN_URL}/api/heal-locator`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selector, action, dom_snapshot: domSnapshot, page_url: pageUrl, framework: "playwright-ts" }),
-        signal: AbortSignal.timeout(30000),
-      });
-      if (!resp.ok) return null;
-      const data = await resp.json();
-      if (data.healed_locator && data.confidence >= CONFIDENCE_THRESHOLD) {
-        console.log(`\n[GHOST] Healed '${selector}' → '${data.healed_locator}' (${(data.confidence * 100).toFixed(1)}%)`);
-        return { healed_locator: data.healed_locator, confidence: data.confidence };
       }
-      return null;
-    } catch {
-      await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
     }
+
+    if (fixed) {
+      fs.writeFileSync(filePath, lines.join('\n'), 'utf8');
+      const rel = path.relative(process.cwd(), filePath);
+      console.log(`[GHOST] 📝 SourceHealer patching: ${rel}:${fixedLine}`);
+      console.log(`         OLD → '${oldSelector}'`);
+      console.log(`         NEW → '${newSelector}'`);
+      console.log(`[GHOST] ✅ Source permanently fixed.\n`);
+    }
+    return fixed;
+  } catch (e) {
+    console.error('[GHOST] SourceHealer error:', e.message);
+    return false;
   }
-  return null;
 }
 
-// ── Patching Logic ─────────────────────────────────────────────────────────
-function makeHealed(original, action) {
-  return async function(selector, ...args) {
-    const firstArgs = [...args];
-    let optionsIndex = 0;
-    if (action === 'fill' || action === 'select' || action === 'press') {
-      optionsIndex = 1;
-    }
+// ── Core: Failure Handler ─────────────────────────────────────────────────────
+//
+// Called from every intercepted catch block.
+// page        — Playwright Page object (for screenshot + content)
+// selector    — the broken selector string
+// action      — 'click', 'fill', etc.
 
-    if (firstArgs[optionsIndex] && typeof firstArgs[optionsIndex] === 'object') {
-      firstArgs[optionsIndex] = { ...firstArgs[optionsIndex], timeout: 2000 };
-    } else {
-      while (firstArgs.length < optionsIndex) {
-        firstArgs.push(undefined);
-      }
-      firstArgs[optionsIndex] = { timeout: 2000 };
-    }
+async function handleFailure(page, selector, action) {
+  const uuid       = genId();
+  const callerInfo = findCallerFile();
+  const url        = page.url();
+  const wsRoot     = findWorkspaceRoot();
+  const queueDir   = getQueueDir();
+  const ssDir      = path.join(wsRoot, 'reports', 'ghost', 'screenshots');
+  const htmlDir    = path.join(wsRoot, 'reports', 'ghost', 'html');
 
-    try {
-      return await original.apply(this, [selector, ...firstArgs]);
-    } catch (err) {
-      console.log(`[GHOST] ${action} failed for '${selector}'. Requesting AI heal...`);
-      try {
-        const dom = await this.content();
-        const url = await this.url();
-        const startTime = Date.now();
-        const result = await consultBrain(selector, action, dom, url);
-        const latencyMs = Date.now() - startTime;
-        if (result) {
-          const { healed_locator, confidence } = result;
-          writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence, latencyMs);
-          return await original.apply(this, [healed_locator, ...args]);
-        }
-      } catch (brainErr) {
-        console.error('[GHOST] Brain error:', brainErr);
-      }
-      return await original.apply(this, [selector, ...args]);
-    }
+  fs.mkdirSync(queueDir, { recursive: true });
+  fs.mkdirSync(ssDir,    { recursive: true });
+  fs.mkdirSync(htmlDir,  { recursive: true });
+
+  let screenshotPath = '';
+  let htmlPath = '';
+  
+  try {
+    const ssFile = path.join(ssDir, `${SESSION_ID}_${safeSelector(selector)}_${uuid}.png`);
+    htmlPath = path.join(htmlDir, `${SESSION_ID}_${uuid}.html`);
+    
+    const [rawDom] = await Promise.all([
+      page.content(),
+      page.screenshot({ path: ssFile, fullPage: true }),
+    ]);
+    
+    screenshotPath = ssFile;
+    console.log(`[GHOST] 📸 Diagnostics captured.`);
+
+    // Save HTML snapshot for the brain to use during teardown
+    fs.writeFileSync(htmlPath, rawDom, 'utf8');
+  } catch (diagErr) {
+    console.warn(`[GHOST] ⚠️  Could not capture diagnostics: ${diagErr.message}`);
+  }
+
+  // Write failure entry to disk immediately
+  const failureFile = path.join(queueDir, `failure_${uuid}.json`);
+  fs.writeFileSync(failureFile, JSON.stringify({
+    uuid, selector, action, url,
+    file: callerInfo.file,
+    line: callerInfo.line,
+    timestamp: getISTTimestamp(),
+    session_id: SESSION_ID,
+    screenshot_path: screenshotPath,
+    html_path: htmlPath,
+  }), 'utf8');
+
+  console.log(`[GHOST] 🔄 Queued for AI healing — brain contacted in background...`);
+  console.log(`[GHOST] ⏳ Healing will be applied after the test suite finishes.\n`);
+}
+
+// ── Playwright Prototype Patcher ──────────────────────────────────────────────
+
+function patchLocatorProto(locator) {
+  const proto = Object.getPrototypeOf(locator);
+  if (proto.__ghost_patched) return;
+  proto.__ghost_patched = true;
+
+  const methods = {
+    click: 'click', fill: 'fill', hover: 'hover',
+    check: 'check', uncheck: 'uncheck', dblclick: 'click',
+    tap: 'click', selectOption: 'select', press: 'press',
+    waitFor: 'wait',
   };
+
+  for (const [method, action] of Object.entries(methods)) {
+    if (typeof proto[method] !== 'function') continue;
+    const original = proto[method];
+    proto[method] = async function (...args) {
+      try {
+        return await original.apply(this, args);
+      } catch (err) {
+        const selector = this.__ghost_selector || String(this);
+        const page     = this.__ghost_page;
+        console.log(`\n[GHOST] ❌ Locator failure! '${selector}' → action '${action}' failed.`);
+        if (page) await handleFailure(page, selector, action);
+        throw err; // ← re-throw so Playwright marks test step as failed
+      }
+    };
+  }
 }
 
-function patchLocatorPrototype(locator) {
-    const proto = Object.getPrototypeOf(locator);
-    if (proto.__ghost_patched) return;
-    proto.__ghost_patched = true;
-
-    const actions = { click: 'click', fill: 'fill', hover: 'hover', check: 'check', dblclick: 'click', waitFor: 'wait', waitForSelector: 'wait' };
-
-    for (const [method, action] of Object.entries(actions)) {
-        if (typeof proto[method] === 'function') {
-            const original = proto[method];
-            proto[method] = async function(...args) {
-                const selector = this.__ghost_selector || this.toString();
-                const page = this.__ghost_page;
-
-                const firstArgs = [...args];
-                let optionsIndex = 0;
-                if (method === 'fill' || method === 'selectOption' || method === 'press') {
-                    optionsIndex = 1;
-                }
-
-                if (firstArgs[optionsIndex] && typeof firstArgs[optionsIndex] === 'object') {
-                    firstArgs[optionsIndex] = { ...firstArgs[optionsIndex], timeout: 2000 };
-                } else {
-                    while (firstArgs.length < optionsIndex) {
-                        firstArgs.push(undefined);
-                    }
-                    firstArgs[optionsIndex] = { timeout: 2000 };
-                }
-
-                try {
-                    return await original.apply(this, firstArgs);
-                } catch (err) {
-                    if (!page) return await original.apply(this, args);
-
-                    console.log(`[GHOST] ${action} failed for locator '${selector}'. Requesting AI heal...`);
-                    try {
-                        const dom = await page.content();
-                        const url = await page.url();
-                        const startTime = Date.now();
-                        const result = await consultBrain(selector, action, dom, url);
-                        const latencyMs = Date.now() - startTime;
-                        if (result) {
-                            const { healed_locator, confidence } = result;
-                            writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence, latencyMs);
-                            const healedLocator = page.locator(healed_locator);
-                            return await healedLocator[method].apply(healedLocator, args);
-                        }
-                    } catch (brainErr) {
-                        console.error('[GHOST] Brain error:', brainErr);
-                    }
-                    return await original.apply(this, args);
-                }
-            };
-        }
-    }
-}
-
-function patchPagePrototype(page) {
+function patchPageProto(page) {
   if (page.__ghost_patched) return;
   page.__ghost_patched = true;
 
   const proto = Object.getPrototypeOf(page);
-  const actions = { click: 'click', fill: 'fill', hover: 'hover', check: 'check', dblclick: 'click', waitForSelector: 'wait' };
 
-  for (const [method, action] of Object.entries(actions)) {
-    if (typeof proto[method] === 'function' && !proto[method].__ghost_patched) {
-      const original = proto[method];
-      proto[method] = makeHealed(original, action);
-      proto[method].__ghost_patched = true;
-    }
+  // Patch direct page actions
+  const methods = {
+    click: 'click', fill: 'fill', hover: 'hover',
+    check: 'check', uncheck: 'uncheck', dblclick: 'click',
+    selectOption: 'select', press: 'press', waitForSelector: 'wait',
+  };
+
+  for (const [method, action] of Object.entries(methods)) {
+    if (typeof proto[method] !== 'function' || proto[method].__ghost_patched) continue;
+    const original = proto[method];
+    proto[method] = async function (selector, ...args) {
+      try {
+        return await original.call(this, selector, ...args);
+      } catch (err) {
+        console.log(`\n[GHOST] ❌ Page.${method} failure! Selector '${selector}' failed.`);
+        await handleFailure(this, selector, action);
+        throw err;
+      }
+    };
+    proto[method].__ghost_patched = true;
   }
 
-  const originalLocator = proto.locator;
-  if (originalLocator && !proto.locator.__ghost_patched) {
-      proto.locator = function(selector, ...args) {
-          const loc = originalLocator.apply(this, [selector, ...args]);
-          loc.__ghost_selector = selector;
-          loc.__ghost_page = this;
-          patchLocatorPrototype(loc);
-          return loc;
-      };
-      proto.locator.__ghost_patched = true;
+  // Patch page.locator to attach page/selector metadata
+  if (typeof proto.locator === 'function' && !proto.locator.__ghost_patched) {
+    const origLocator = proto.locator;
+    proto.locator = function (selector, ...args) {
+      const loc = origLocator.call(this, selector, ...args);
+      loc.__ghost_page     = this;
+      loc.__ghost_selector = selector;
+      patchLocatorProto(loc);
+      return loc;
+    };
+    proto.locator.__ghost_patched = true;
   }
 
-  console.log('[GHOST] Playwright Page & Locator prototypes successfully patched inside worker!');
+  console.log('[GHOST] ✅ Playwright Page & Locator self-healing activated (deferred-parallel mode).');
 }
 
-Module._load = function(request, parent, isMain) {
+// ── Module._load Intercept ────────────────────────────────────────────────────
+
+Module._load = function (request, parent, isMain) {
   const exports = originalLoad.apply(this, arguments);
 
-  if (request === 'playwright-core' || request === 'playwright') {
-    if (exports && exports.chromium && !exports.__ghost_patched) {
-      exports.__ghost_patched = true;
-      const originalLaunch = exports.chromium.launch;
-      exports.chromium.launch = async function(...args) {
-        const browser = await originalLaunch.apply(this, args);
-        const originalNewContext = browser.newContext;
-        browser.newContext = async function(...cArgs) {
-          const context = await originalNewContext.apply(this, cArgs);
-          const originalNewPage = context.newPage;
-          context.newPage = async function(...pArgs) {
-            const page = await originalNewPage.apply(this, pArgs);
-            patchPagePrototype(page);
-            return page;
-          };
-          return context;
-        };
-        const originalNewPageBrowser = browser.newPage;
-        browser.newPage = async function(...pArgs) {
-          const page = await originalNewPageBrowser.apply(this, pArgs);
-          patchPagePrototype(page);
+  if ((request === 'playwright-core' || request === 'playwright') &&
+       exports && exports.chromium && !exports.__ghost_patched) {
+    exports.__ghost_patched = true;
+
+    const origLaunch = exports.chromium.launch;
+    exports.chromium.launch = async function (...args) {
+      const browser = await origLaunch.apply(this, args);
+
+      const origNewContext = browser.newContext;
+      browser.newContext = async function (...cArgs) {
+        const ctx = await origNewContext.apply(this, cArgs);
+        const origNewPage = ctx.newPage;
+        ctx.newPage = async function (...pArgs) {
+          const page = await origNewPage.apply(this, pArgs);
+          patchPageProto(page);
           return page;
         };
-        return browser;
+        return ctx;
       };
-    }
+
+      const origBrowserNewPage = browser.newPage;
+      browser.newPage = async function (...pArgs) {
+        const page = await origBrowserNewPage.apply(this, pArgs);
+        patchPageProto(page);
+        return page;
+      };
+
+      return browser;
+    };
   }
+
   return exports;
 };

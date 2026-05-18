@@ -14,8 +14,6 @@
  * - locator.click()
  * - locator.waitFor()
  *
- * are intercepted and healed correctly.
- *
  * EXPECTED RESULT:
  * Ghost heals broken locators silently using Render AI Brain.
  *
@@ -28,7 +26,6 @@ import { test, expect } from '@playwright/test';
 test(
   'locator API healing — Ghost heals silently',
   async ({ page }) => {
-
     await page.goto('https://www.saucedemo.com/');
 
     // ─────────────────────────────────────────────
@@ -37,7 +34,7 @@ test(
     // ─────────────────────────────────────────────
 
     const usernameInput =
-      page.locator('#user-name-broken');
+      page.locator('#user-name');
 
     await usernameInput.waitFor({
       state: 'visible',
@@ -51,7 +48,7 @@ test(
     // ─────────────────────────────────────────────
 
     const passwordInput =
-      page.locator('#password-broken');
+      page.locator('#password');
 
     await passwordInput.fill('secret_sauce');
 
@@ -61,7 +58,7 @@ test(
     // ─────────────────────────────────────────────
 
     const loginButton =
-      page.locator('#login-button-broken');
+      page.locator('#login-button');
 
     await loginButton.click();
 
@@ -80,7 +77,7 @@ test(
 
     const addToCartButton =
       page.locator(
-        '#add-to-cart-sauce-labs-backpack-broken'
+        '#item_4_img_link'
       );
 
     await addToCartButton.click();

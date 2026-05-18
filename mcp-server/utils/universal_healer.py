@@ -34,12 +34,30 @@ class UniversalSourceHealer:
                 # Try a broader match if strict quoting fails (e.g. for CSS selectors with spaces)
                 new_line = target_line.replace(old_locator, new_locator)
 
-            lines[line_number - 1] = new_line
+            if target_line != new_line:
+                lines[line_number - 1] = new_line
+                logger.info(f"✨ [FIXED] {file_path}:{line_number} | {old_locator} -> {new_locator}")
+            else:
+                # Fallback: Scan the entire file from top to bottom to locate constructor/declaration definitions
+                found_and_patched = False
+                for idx, line in enumerate(lines):
+                    if old_locator in line:
+                        patched_line = re.sub(f"(['\"]){escaped_old}(['\"])", f"\\1{new_locator}\\2", line)
+                        if patched_line == line:
+                            patched_line = line.replace(old_locator, new_locator)
+                        lines[idx] = patched_line
+                        line_number = idx + 1
+                        found_and_patched = True
+                        logger.info(f"✨ [SCAN-FIXED] {file_path}:{line_number} (constructor scan) | {old_locator} -> {new_locator}")
+                        break
+                
+                if not found_and_patched:
+                    logger.error(f"Could not locate '{old_locator}' anywhere in {file_path}")
+                    return False
 
             with open(file_path, "w", encoding="utf-8") as f:
                 f.writelines(lines)
             
-            logger.info(f"✨ [FIXED] {file_path}:{line_number} | {old_locator} -> {new_locator}")
             return True
         except Exception as e:
             logger.error(f"Failed to fix source: {e}")

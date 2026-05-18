@@ -1,306 +1,221 @@
 /**
- * 👻 Ghost Healer — Playwright TypeScript Global Setup
+ * 👻 Ghost Healer — Global Setup & Teardown
+ *
+ * SETUP   → Patches Playwright prototypes before any test runs.
+ * TEARDOWN → After ALL tests finish:
+ *             1. Reads healed_*.json from .ghost_queue/
+ *             2. Applies SourceHealer patches to local source files
+ *             3. Writes reports (suggested-fixes.json, session_*.json)
+ *             4. Prints the healing summary banner
+ *             5. Cleans up the queue directory
+ *
+ * In playwright.config.ts:
+ *   import { ghostGlobalSetup, ghostGlobalTeardown } from 'ghost-healer-ts';
+ *   export default defineConfig({
+ *     globalSetup:    ghostGlobalSetup,
+ *     globalTeardown: ghostGlobalTeardown,
+ *   });
  */
 
-import { chromium, Page, Locator } from '@playwright/test';
-import * as fs from 'fs';
+import * as fs   from 'fs';
 import * as path from 'path';
+import { chromium } from '@playwright/test';
+import { SourceHealer } from './SourceHealer';
+import { GhostReporter, HealedEntry } from './GhostReporter';
 
-const BRAIN_URL = process.env['GHOST_BRAIN_URL'] || 'https://ghost-healer-brain.onrender.com';
-const CONFIDENCE_THRESHOLD = parseFloat(process.env['GHOST_CONFIDENCE'] || '0.5');
-const MAX_RETRIES = parseInt(process.env['GHOST_MAX_RETRIES'] || '3');
-const FIRST_ATTEMPT_TIMEOUT = 2000;
-
-// ─────────────────────────────────────────────────────────────
-// Stack Parser & Reporter
-// ─────────────────────────────────────────────────────────────
-
-function findCallerFile(): { file: string | null; line: number } {
-  const err = new Error();
-  const stack = err.stack;
-  if (!stack) return { file: null, line: 0 };
-  const lines = stack.split('\n');
-  for (const line of lines) {
-    const match = line.match(/\((.*):(\d+):(\d+)\)/) || line.match(/at (.*):(\d+):(\d+)/);
-    if (match) {
-      const filePath = match[1];
-      const lineNo = parseInt(match[2], 10) || 0;
-      const isInternal =
-        filePath.includes('node_modules') ||
-        filePath.includes('pw-hook.js') ||
-        filePath.includes('setup.ts') ||
-        filePath.includes('GhostLocator');
-
-      if (!isInternal && fs.existsSync(filePath)) {
-        return { file: filePath, line: lineNo };
-      }
-    }
-  }
-  return { file: null, line: 0 };
-}
-
-function getISTTimestamp(): string {
-  const date = new Date();
-  const istOffset = 5.5 * 60 * 60 * 1000;
-  const istDate = new Date(date.getTime() + istOffset);
-  return istDate.toISOString().replace('Z', '+05:30');
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function findWorkspaceRoot(): string {
-  let currentDir = process.cwd();
-  while (true) {
-    if (fs.existsSync(path.join(currentDir, 'ghost.yaml')) || fs.existsSync(path.join(currentDir, '.git'))) {
-      return currentDir;
+  let dir = process.cwd();
+  for (let i = 0; i < 20; i++) {
+    if (fs.existsSync(path.join(dir, 'ghost.yaml')) || fs.existsSync(path.join(dir, '.git'))) {
+      return dir;
     }
-    const parentDir = path.dirname(currentDir);
-    if (parentDir === currentDir) {
-      return path.resolve(__dirname, '../../..');
-    }
-    currentDir = parentDir;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
   }
+  return path.resolve(__dirname, '../../..');
 }
 
-function writeToReport(
-  oldSelector: string,
-  newSelector: string,
-  action: string,
-  fileInfo: { file: string | null; line: number },
-  url: string,
-  confidence: number
-) {
-  const reportDir = path.join(findWorkspaceRoot(), 'reports', 'ghost');
-  fs.mkdirSync(reportDir, { recursive: true });
-  const reportFile = path.join(reportDir, 'suggested-fixes.json');
-  let data: any[] = [];
-  if (fs.existsSync(reportFile)) {
-    try {
-      data = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
-    } catch (e) {}
-  }
-  data.push({
-    timestamp: getISTTimestamp(),
-    framework: 'playwright-ts',
-    language: 'typescript',
-    file: fileInfo.file,
-    line: fileInfo.line,
-    action: action,
-    old_locator: oldSelector,
-    suggested_locator: newSelector,
-    confidence: confidence,
-    page_url: url,
-  });
-  fs.writeFileSync(reportFile, JSON.stringify(data, null, 2), 'utf8');
-}
+// ── Global Setup ──────────────────────────────────────────────────────────────
 
-// ─────────────────────────────────────────────────────────────
-// Brain Communication
-// ─────────────────────────────────────────────────────────────
-
-async function consultBrain(
-  selector: string,
-  action: string,
-  domSnapshot: string,
-  pageUrl: string
-): Promise<{ healed_locator: string; confidence: number } | null> {
-  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-    try {
-      const resp = await fetch(`${BRAIN_URL}/api/heal-locator`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          selector,
-          action,
-          dom_snapshot: domSnapshot,
-          page_url: pageUrl,
-          framework: 'playwright-ts',
-        }),
-        signal: AbortSignal.timeout(30000),
-      });
-
-      if (!resp.ok) {
-        return null;
-      }
-
-      const data = (await resp.json()) as any;
-      const confidence: number = data.confidence ?? 0;
-      const healed: string | null = data.healed_locator ?? null;
-
-      if (healed && confidence >= CONFIDENCE_THRESHOLD) {
-        console.log(
-          `[GHOST] Healed '${selector}' → '${healed}' ` +
-            `(confidence=${(confidence * 100).toFixed(1)}%)`
-        );
-        return { healed_locator: healed, confidence };
-      }
-      return null;
-    } catch {
-      const wait = (attempt + 1) * 5000;
-      console.warn(`[GHOST] Brain unreachable. Retrying in ${wait / 1000}s...`);
-      await new Promise((r) => setTimeout(r, wait));
-    }
-  }
-  return null;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Generic Heal Wrapper for Page
-// ─────────────────────────────────────────────────────────────
-
-function makeHealedPage(original: Function, action: string): Function {
-  return async function (this: any, selector: string, ...args: any[]) {
-    const firstArgs = [...args];
-    let optionsIndex = 0;
-    if (action === 'fill' || action === 'select' || action === 'press') {
-      optionsIndex = 1;
-    }
-
-    if (firstArgs[optionsIndex] && typeof firstArgs[optionsIndex] === 'object') {
-      firstArgs[optionsIndex] = { ...firstArgs[optionsIndex], timeout: FIRST_ATTEMPT_TIMEOUT };
-    } else {
-      while (firstArgs.length < optionsIndex) {
-        firstArgs.push(undefined);
-      }
-      firstArgs[optionsIndex] = { timeout: FIRST_ATTEMPT_TIMEOUT };
-    }
-
-    try {
-      return await original.call(this, selector, ...firstArgs);
-    } catch {
-      const page = this as Page;
-      const [dom, url] = await Promise.all([
-        page.content(),
-        Promise.resolve(page.url()),
-      ]);
-
-      const result = await consultBrain(selector, action, dom, url);
-      if (result) {
-        const { healed_locator, confidence } = result;
-        console.log(`[GHOST] Retrying with healed locator: ${healed_locator}`);
-        writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence);
-        return await original.call(this, healed_locator, ...args);
-      }
-      return await original.call(this, selector, ...args);
-    }
-  };
-}
-
-// ─────────────────────────────────────────────────────────────
-// Generic Heal Wrapper for Locator
-// ─────────────────────────────────────────────────────────────
-
-function makeHealedLocator(original: Function, action: string): Function {
-  return async function (this: any, ...args: any[]) {
-    const firstArgs = [...args];
-    let optionsIndex = 0;
-    if (original.name === 'fill' || original.name === 'selectOption' || original.name === 'press' || action === 'fill') {
-      optionsIndex = 1;
-    }
-
-    if (firstArgs[optionsIndex] && typeof firstArgs[optionsIndex] === 'object') {
-      firstArgs[optionsIndex] = { ...firstArgs[optionsIndex], timeout: FIRST_ATTEMPT_TIMEOUT };
-    } else {
-      while (firstArgs.length < optionsIndex) {
-        firstArgs.push(undefined);
-      }
-      firstArgs[optionsIndex] = { timeout: FIRST_ATTEMPT_TIMEOUT };
-    }
-
-    try {
-      return await original.apply(this, firstArgs);
-    } catch {
-      const selector = this.__ghost_selector || this.toString();
-      const page = this.__ghost_page;
-      
-      if (!page) {
-          return await original.apply(this, args);
-      }
-
-      const [dom, url] = await Promise.all([
-        page.content(),
-        Promise.resolve(page.url()),
-      ]);
-
-      const result = await consultBrain(selector, action, dom, url);
-      if (result) {
-        const { healed_locator, confidence } = result;
-        console.log(`[GHOST] Retrying locator with healed selector: ${healed_locator}`);
-        writeToReport(selector, healed_locator, action, findCallerFile(), url, confidence);
-        
-        const healedLocator = page.locator(healed_locator);
-        return await (healedLocator as any)[original.name || action].apply(healedLocator, args);
-      }
-      return await original.apply(this, args);
-    }
-  };
-}
-
-// ─────────────────────────────────────────────────────────────
-// Prototype Patching
-// ─────────────────────────────────────────────────────────────
-
-async function patchPrototypes(): Promise<void> {
-  const browser = await chromium.launch({ headless: true });
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  
-  // Patch Page
-  const pageProto = Object.getPrototypeOf(page) as any;
-  const actionsToHeal: Array<[string, string]> = [
-    ['click', 'click'],
-    ['fill', 'fill'],
-    ['hover', 'hover'],
-    ['check', 'check'],
-    ['uncheck', 'uncheck'],
-    ['dblclick', 'click'],
-    ['tap', 'click'],
-    ['selectOption', 'select'],
-    ['press', 'press'],
-    ['waitForSelector', 'wait'],
-    ['waitFor', 'wait'],
-  ];
-
-  for (const [method, action] of actionsToHeal) {
-    if (typeof pageProto[method] === 'function' && !pageProto[method].__ghost_patched) {
-      const original = pageProto[method];
-      pageProto[method] = makeHealedPage(original, action);
-      pageProto[method].__ghost_patched = true;
-    }
-  }
-
-  // Patch page.locator to inject page and selector references
-  const originalPageLocator = pageProto.locator;
-  if (originalPageLocator && !pageProto.locator.__ghost_patched) {
-      pageProto.locator = function(this: any, selector: string, ...args: any[]) {
-          const loc = originalPageLocator.call(this, selector, ...args);
-          loc.__ghost_page = this;
-          loc.__ghost_selector = selector;
-          return loc;
-      };
-      pageProto.locator.__ghost_patched = true;
-  }
-
-  // Patch Locator
-  const dummyLocator = page.locator('html');
-  const locatorProto = Object.getPrototypeOf(dummyLocator) as any;
-  
-  for (const [method, action] of actionsToHeal) {
-      if (typeof locatorProto[method] === 'function' && !locatorProto[method].__ghost_patched) {
-          const original = locatorProto[method];
-          locatorProto[method] = makeHealedLocator(original, action);
-          locatorProto[method].__ghost_patched = true;
-      }
-  }
-
-  console.log('[GHOST] ✅ Playwright Page & Locator AI self-healing activated.');
-  await browser.close();
-}
-
-// ─────────────────────────────────────────────────────────────
-// Global Setup Entry
-// ─────────────────────────────────────────────────────────────
-
+/**
+ * Patches Playwright Page & Locator prototypes so the deferred healing
+ * interceptors are active for every test worker.
+ *
+ * NOTE: The actual heavy lifting (screenshot, brain call, queue) happens
+ * inside pw-hook.js which is loaded via require() in playwright.config.ts.
+ * This setup function only validates the connection is live.
+ */
 export default async function ghostGlobalSetup(): Promise<void> {
-  await patchPrototypes();
+  const wsRoot   = findWorkspaceRoot();
+  const queueDir = path.join(wsRoot, 'reports', 'ghost', '.ghost_queue');
+
+  // Clear any stale queue from a previous run
+  if (fs.existsSync(queueDir)) {
+    fs.rmSync(queueDir, { recursive: true, force: true });
+  }
+
+  console.log('\n[GHOST] 👻 Ghost Healer activated — Deferred Parallel Healing mode.');
+  console.log('[GHOST] 🧠 AI Brain URL:', process.env['GHOST_BRAIN_URL'] || 'https://ghost-healer-brain.onrender.com');
+  console.log('[GHOST] ℹ️  Failures will be healed after the test suite finishes.\n');
+}
+
+// ── Global Teardown ───────────────────────────────────────────────────────────
+
+/**
+ * Runs after ALL test workers have exited.
+ *
+ * Flow:
+ *  1. Wait briefly so all worker `beforeExit` brain requests can flush to disk
+ *  2. Read every healed_*.json from .ghost_queue/
+ *  3. Apply SourceHealer for each successful heal
+ *  4. Generate reports
+ *  5. Print summary banner
+ *  6. Delete queue dir
+ */
+export async function ghostGlobalTeardown(): Promise<void> {
+  const wsRoot   = findWorkspaceRoot();
+  const queueDir = path.join(wsRoot, 'reports', 'ghost', '.ghost_queue');
+  const reportDir = path.join(wsRoot, 'reports', 'ghost');
+
+  // Give workers a moment to finish writing their healed_*.json files
+  await new Promise(r => setTimeout(r, 3000));
+
+  // Count total failures
+  let totalFailures = 0;
+  let screenshotCount = 0;
+
+  if (fs.existsSync(queueDir)) {
+    totalFailures = fs.readdirSync(queueDir)
+      .filter(f => f.startsWith('failure_')).length;
+  }
+
+  // Count screenshots already saved by workers
+  const ssDir = path.join(reportDir, 'screenshots');
+  if (fs.existsSync(ssDir)) {
+    screenshotCount = fs.readdirSync(ssDir)
+      .filter(f => f.endsWith('.png')).length;
+  }
+
+  // No failures → clean exit
+  if (totalFailures === 0 || !fs.existsSync(queueDir)) {
+    GhostReporter.printSummary(0, 0, 0, new Set(), 0, path.relative(process.cwd(), reportDir));
+    return;
+  }
+
+  // ── Read failures and call Brain ──────────────────────────────────────────
+  const failureFiles = fs.readdirSync(queueDir).filter(f => f.startsWith('failure_'));
+  const healedEntries: HealedEntry[] = [];
+  const brainUrl = process.env['GHOST_BRAIN_URL'] || 'https://ghost-healer-brain.onrender.com';
+  const confThreshold = 0.5;
+
+  if (failureFiles.length > 0) {
+    console.log(`\n[GHOST] 🧠 Consulting AI Brain for ${failureFiles.length} failure(s)...`);
+  }
+
+  // Process failures in parallel
+  await Promise.all(failureFiles.map(async (fname) => {
+    try {
+      const raw = fs.readFileSync(path.join(queueDir, fname), 'utf8');
+      const failure = JSON.parse(raw);
+      
+      let domSnapshot = '';
+      if (failure.html_path && fs.existsSync(failure.html_path)) {
+        domSnapshot = fs.readFileSync(failure.html_path, 'utf8');
+      }
+
+      // Retry up to 3 times
+      let healedLocator = null;
+      let confidence = 0;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const resp = await fetch(`${brainUrl}/api/heal-locator`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              selector: failure.selector, 
+              action: failure.action,
+              dom_snapshot: domSnapshot,
+              page_url: failure.url,
+              framework: 'playwright-ts',
+            }),
+            signal: AbortSignal.timeout(30000),
+          });
+          if (resp.ok) {
+            const data = (await resp.json()) as { healed_locator?: string; confidence?: number };
+            if (data.healed_locator && data.confidence !== undefined && data.confidence >= confThreshold) {
+              healedLocator = data.healed_locator;
+              confidence = data.confidence;
+              break;
+            }
+          }
+        } catch (_) {
+          await new Promise(r => setTimeout(r, (attempt + 1) * 3000));
+        }
+      }
+
+      if (healedLocator) {
+        console.log(`[GHOST] 🧠 Brain healed '${failure.selector}' → '${healedLocator}' (${(confidence * 100).toFixed(1)}%)`);
+        healedEntries.push({
+          uuid: failure.uuid,
+          selector: failure.selector,
+          action: failure.action,
+          url: failure.url,
+          file: failure.file,
+          line: failure.line,
+          healed_locator: healedLocator,
+          confidence: confidence,
+          timestamp: failure.timestamp,
+          session_id: failure.session_id,
+          screenshot_path: failure.screenshot_path,
+          source_patched: false
+        });
+      }
+    } catch (_) {
+      // malformed file — skip
+    }
+  }));
+
+  // ── Apply source patches ──────────────────────────────────────────────────
+  let totalPatched = 0;
+  const patchedFiles = new Set<string>();
+
+  if (healedEntries.length > 0) {
+    console.log(`\n[GHOST] 🔧 Applying ${healedEntries.length} source patch(es)...\n`);
+  }
+
+  for (const entry of healedEntries) {
+    const result = SourceHealer.applyFix(
+      entry.file,
+      entry.line,
+      entry.selector,
+      entry.healed_locator,
+    );
+    entry.source_patched = result.success;
+    if (result.success) {
+      totalPatched++;
+      if (entry.file) patchedFiles.add(path.basename(entry.file));
+    }
+  }
+
+  // ── Write reports ─────────────────────────────────────────────────────────
+  fs.mkdirSync(reportDir, { recursive: true });
+  GhostReporter.writeReports(healedEntries, wsRoot);
+
+  // ── Print summary banner ──────────────────────────────────────────────────
+  GhostReporter.printSummary(
+    totalFailures,
+    healedEntries.length,
+    totalPatched,
+    patchedFiles,
+    screenshotCount,
+    path.relative(process.cwd(), reportDir),
+  );
+
+  // ── Cleanup queue dir ─────────────────────────────────────────────────────
+  try {
+    fs.rmSync(queueDir, { recursive: true, force: true });
+  } catch (_) {}
 }
