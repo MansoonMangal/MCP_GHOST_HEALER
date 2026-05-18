@@ -40,26 +40,30 @@ npm install ghost-healer-ts --save-dev
 ```
 
 #### Step 2: Add to Configuration
-Open your standard configuration file (`playwright.config.ts`) and add the global setup hook registration:
+Open your standard configuration file (`playwright.config.ts`) and add the global setup, global teardown hook registration, and `actionTimeout` to ensure quick AI responses:
 
 ```typescript
 // playwright.config.ts
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  // 👻 Registers the global prototype self-healing setup
+  // 👻 Registers global self-healing hooks (deferred-parallel mode)
   globalSetup: require.resolve('ghost-healer-ts/dist/setup'),
+  globalTeardown: require.resolve('ghost-healer-ts/dist/teardown'),
+  
   use: {
     headless: false,
     screenshot: 'only-on-failure',
+    // 👻 Fail broken elements fast (5s) to trigger AI healing quickly
+    actionTimeout: 5000, 
   },
 });
 ```
 
 #### Step 3: Run Your Tests
-Execute your Playwright test commands as you normally would, prepending the `GHOST_CONFIG` environment variable:
+Execute your Playwright test commands, loading the prototype interceptor via `NODE_OPTIONS`:
 ```bash
-npx cross-env NODE_OPTIONS="-r ghost-healer-ts/src/pw-hook.js" GHOST_CONFIG="ghost.yaml" npx playwright test
+npx cross-env NODE_OPTIONS="-r ghost-healer-ts/dist/pw-hook.js" npx playwright test
 ```
 
 ---
