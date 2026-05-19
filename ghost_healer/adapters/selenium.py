@@ -46,7 +46,7 @@ def _heal_and_retry_element(element: Any, driver: Any, selector: str, action: st
         return original_fn(*args, **kwargs)
     except Exception as original_error:
         start = time.time()
-        logger.warning(f"[GHOST] {action} failed on element '{selector}'. Requesting AI heal...")
+        print(f"[GHOST] [DEBUG] {action} failed on element '{selector}'. Requesting AI heal...")
 
         dom = _get_dom(driver)
         url = driver.current_url
@@ -54,8 +54,15 @@ def _heal_and_retry_element(element: Any, driver: Any, selector: str, action: st
         duration = (time.time() - start) * 1000
 
         if healed:
-            logger.info(f"[GHOST] Healed element '{selector}' → '{healed}' (action={action})")
+            print(f"[GHOST] Healed element '{selector}' -> '{healed}' (action={action})")
             filename, lineno = parse_stack_trace()
+            print(f"[GHOST] [DEBUG] Resolved caller: {filename}:{lineno}")
+
+            # Apply source code patch on disk
+            if filename and lineno:
+                from ghost_healer.utils.source_healer import source_healer
+                source_healer.apply_fix(filename, lineno, selector, healed)
+
             reporter.log_healing(
                 original=selector,
                 healed=healed,
@@ -73,7 +80,7 @@ def _heal_and_retry_element(element: Any, driver: Any, selector: str, action: st
             new_fn = getattr(new_element, original_fn.__name__)
             return new_fn(*args, **kwargs)
 
-        logger.error(f"[GHOST] Could not heal '{selector}'. Raising original error.")
+        print(f"[GHOST] [ERROR] Could not heal '{selector}'. Raising original error.")
         raise original_error
 
 def _make_element_patch(element: Any, driver: Any, method_name: str, action: str, selector: str):
@@ -114,7 +121,7 @@ def protect_driver(driver: Any) -> Any:
             except ImportError:
                 raise original_error
 
-            logger.warning(f"[GHOST] find_element failed for '{selector}'. Requesting AI heal...")
+            print(f"[GHOST] [DEBUG] find_element failed for '{selector}'. Requesting AI heal...")
 
             start = time.time()
             dom = _get_dom(driver)
@@ -123,8 +130,15 @@ def protect_driver(driver: Any) -> Any:
             duration = (time.time() - start) * 1000
 
             if healed:
-                logger.info(f"[GHOST] Healed '{selector}' → '{healed}'")
+                print(f"[GHOST] Healed '{selector}' -> '{healed}' (confidence={confidence})")
                 filename, lineno = parse_stack_trace()
+                print(f"[GHOST] [DEBUG] Resolved caller: {filename}:{lineno}")
+
+                # Apply source code patch on disk
+                if filename and lineno:
+                    from ghost_healer.utils.source_healer import source_healer
+                    source_healer.apply_fix(filename, lineno, selector, healed)
+
                 reporter.log_healing(
                     original=selector,
                     healed=healed,
@@ -161,6 +175,12 @@ def protect_driver(driver: Any) -> Any:
             if healed:
                 logger.info(f"[GHOST] Healed '{selector}' → '{healed}'")
                 filename, lineno = parse_stack_trace()
+
+                # Apply source code patch on disk
+                if filename and lineno:
+                    from ghost_healer.utils.source_healer import source_healer
+                    source_healer.apply_fix(filename, lineno, selector, healed)
+
                 reporter.log_healing(
                     original=selector,
                     healed=healed,

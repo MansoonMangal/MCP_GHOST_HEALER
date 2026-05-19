@@ -35,8 +35,20 @@ function findCallerFile(): { file: string | null; line: number } {
   for (const line of lines) {
     const match = line.match(/\((.*):(\d+):(\d+)\)/) || line.match(/at (.*):(\d+):(\d+)/);
     if (match) {
-      const filePath = match[1];
+      let filePath = match[1];
       const lineNo = parseInt(match[2], 10) || 0;
+      
+      // Convert file:/// URIs (ESM style under Node/ts-node) to standard local paths
+      if (filePath.startsWith('file:///')) {
+        filePath = filePath.substring(8);
+      }
+      try {
+        filePath = decodeURIComponent(filePath);
+      } catch (e) {}
+      if (filePath.startsWith('/') && filePath.match(/^\/[a-zA-Z]:/)) {
+        filePath = filePath.substring(1);
+      }
+
       const isInternal = filePath.includes('node_modules') || 
                         filePath.includes('selenium-setup') || 
                         filePath.includes('pw-hook.js') || 
@@ -48,6 +60,79 @@ function findCallerFile(): { file: string | null; line: number } {
     }
   }
   return { file: null, line: 0 };
+}
+
+function applySourceFix(filePath: string, lineNumber: number, oldSelector: string, newSelector: string): boolean {
+  if (!filePath || !fs.existsSync(filePath)) return false;
+  try {
+    const lines = fs.readFileSync(filePath, 'utf8').split('\n');
+    let fixed = false, fixedLine = lineNumber;
+
+    let cleanOld = oldSelector;
+    let cleanNew = newSelector;
+    if (oldSelector.startsWith('#') && newSelector.startsWith('#')) {
+      cleanOld = oldSelector.substring(1);
+      cleanNew = newSelector.substring(1);
+    } else if (oldSelector.startsWith('.') && newSelector.startsWith('.')) {
+      cleanOld = oldSelector.substring(1);
+      cleanNew = newSelector.substring(1);
+    }
+
+    const options = [
+      { oldS: oldSelector, newS: newSelector },
+      { oldS: cleanOld, newS: cleanNew }
+    ];
+
+    // Try extracting from *[id="..."] and *[class="..."]
+    const idMatch = oldSelector.match(/^\*\[id="(.+?)"\]$/);
+    if (idMatch) {
+      const rawId = idMatch[1];
+      const healedId = newSelector.startsWith('#') ? newSelector.substring(1) : newSelector;
+      options.push({ oldS: rawId, newS: healedId });
+    }
+    const classMatch = oldSelector.match(/^\*\[class="(.+?)"\]$/);
+    if (classMatch) {
+      const rawClass = classMatch[1];
+      const healedClass = newSelector.startsWith('.') ? newSelector.substring(1) : newSelector;
+      options.push({ oldS: rawClass, newS: healedClass });
+    }
+
+    for (const opt of options) {
+      if (fixed) break;
+      const esc = opt.oldS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re  = new RegExp(`(['"])${esc}(['"])`, 'g');
+
+      if (lineNumber > 0 && lineNumber <= lines.length) {
+        const orig = lines[lineNumber - 1];
+        let upd = orig.replace(re, `$1${opt.newS}$2`);
+        if (upd === orig) upd = orig.split(opt.oldS).join(opt.newS);
+        if (upd !== orig) { lines[lineNumber - 1] = upd; fixed = true; break; }
+      }
+
+      if (!fixed) {
+        for (let i = 0; i < lines.length; i++) {
+          if (lines[i].includes(opt.oldS)) {
+            let upd = lines[i].replace(re, `$1${opt.newS}$2`);
+            if (upd === lines[i]) upd = lines[i].split(opt.oldS).join(opt.newS);
+            lines[i] = upd; fixedLine = i + 1; fixed = true; break;
+          }
+        }
+      }
+    }
+
+    if (fixed) {
+      fs.writeFileSync(filePath, lines.join('\n'), 'utf8');
+      const rel = path.relative(process.cwd(), filePath);
+      console.log(`[GHOST] 📝 SourceHealer patching: ${rel}:${fixedLine}`);
+      console.log(`         OLD → '${oldSelector}'`);
+      console.log(`         NEW → '${newSelector}'`);
+      console.log(`[GHOST] ✅ Source permanently fixed.\n`);
+    }
+    return fixed;
+  } catch (e: any) {
+    console.error('[GHOST] SourceHealer error:', e.message);
+    return false;
+  }
 }
 
 function getISTTimestamp(): string {
@@ -223,7 +308,14 @@ proto.findElement = async function (locator: any) {
       const result = await consultBrain(selector, 'find', dom, url);
       if (result) {
         const latencyMs = Date.now() - startTime;
-        writeToReport(selector, result.healed_locator, 'click', findCallerFile(), url, result.confidence, latencyMs);
+        const caller = findCallerFile();
+        console.log(`[GHOST] [DEBUG] findCallerFile returned: file=${caller.file}, line=${caller.line}`);
+        if (caller.file) {
+          applySourceFix(caller.file, caller.line, selector, result.healed_locator);
+        } else {
+          console.log(`[GHOST] [DEBUG] Caller stack: ${new Error().stack}`);
+        }
+        writeToReport(selector, result.healed_locator, 'click', caller, url, result.confidence, latencyMs);
         return await _originalFindElement.call(this, By.css(result.healed_locator));
       }
     } catch (brainError) {
@@ -249,7 +341,11 @@ proto.findElements = async function (locator: any) {
       const result = await consultBrain(selector, 'find', dom, url);
       if (result) {
         const latencyMs = Date.now() - startTime;
-        writeToReport(selector, result.healed_locator, 'click', findCallerFile(), url, result.confidence, latencyMs);
+        const caller = findCallerFile();
+        if (caller.file) {
+          applySourceFix(caller.file, caller.line, selector, result.healed_locator);
+        }
+        writeToReport(selector, result.healed_locator, 'click', caller, url, result.confidence, latencyMs);
         return await _originalFindElements.call(this, By.css(result.healed_locator));
       }
     } catch { /* ignore */ }

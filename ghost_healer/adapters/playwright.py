@@ -21,13 +21,20 @@ def _heal_and_retry_page(page: Page, selector: str, action: str, original_fn, *a
         return original_fn(selector, *args, **kwargs)
     except Exception as original_error:
         start = time.time()
-        logger.warning(f"[GHOST] {action} failed for '{selector}'. Requesting AI heal...")
+        print(f"[GHOST] [DEBUG] {action} failed for '{selector}'. Requesting AI heal...")
         healed, confidence = ghost_engine.get_healed_locator(selector, action, page.content(), url=page.url, framework="playwright-python")
         duration = (time.time() - start) * 1000
 
         if healed:
-            logger.info(f"[GHOST] Healed '{selector}' → '{healed}' (action={action})")
+            print(f"[GHOST] Healed '{selector}' -> '{healed}' (action={action})")
             filename, lineno = parse_stack_trace()
+            print(f"[GHOST] [DEBUG] Resolved caller: {filename}:{lineno}")
+            
+            # Apply source code patch on disk
+            if filename and lineno:
+                from ghost_healer.utils.source_healer import source_healer
+                source_healer.apply_fix(filename, lineno, selector, healed)
+
             reporter.log_healing(
                 original=selector,
                 healed=healed,
@@ -42,7 +49,7 @@ def _heal_and_retry_page(page: Page, selector: str, action: str, original_fn, *a
 
             return original_fn(healed, *args, **kwargs)
 
-        logger.error(f"[GHOST] Could not heal '{selector}'. Raising original error.")
+        print(f"[GHOST] [ERROR] Could not heal '{selector}'. Raising original error.")
         raise original_error
 
 
@@ -62,13 +69,20 @@ def _heal_and_retry_locator(locator: Locator, selector: str, page: Page, action:
         return original_fn(*args, **kwargs)
     except Exception as original_error:
         start = time.time()
-        logger.warning(f"[GHOST] {action} failed for locator '{selector}'. Requesting AI heal...")
+        print(f"[GHOST] [DEBUG] {action} failed for locator '{selector}'. Requesting AI heal...")
         healed, confidence = ghost_engine.get_healed_locator(selector, action, page.content(), url=page.url, framework="playwright-python")
         duration = (time.time() - start) * 1000
 
         if healed:
-            logger.info(f"[GHOST] Healed locator '{selector}' → '{healed}' (action={action})")
+            print(f"[GHOST] Healed locator '{selector}' -> '{healed}' (action={action})")
             filename, lineno = parse_stack_trace()
+            print(f"[GHOST] [DEBUG] Resolved caller: {filename}:{lineno}")
+
+            # Apply source code patch on disk
+            if filename and lineno:
+                from ghost_healer.utils.source_healer import source_healer
+                source_healer.apply_fix(filename, lineno, selector, healed)
+
             reporter.log_healing(
                 original=selector,
                 healed=healed,
@@ -86,7 +100,7 @@ def _heal_and_retry_locator(locator: Locator, selector: str, page: Page, action:
             healed_fn = getattr(healed_locator, original_fn.__name__)
             return healed_fn(*args, **kwargs)
 
-        logger.error(f"[GHOST] Could not heal locator '{selector}'. Raising original error.")
+        print(f"[GHOST] [ERROR] Could not heal locator '{selector}'. Raising original error.")
         raise original_error
 
 def _make_locator_patch(locator: Locator, method_name: str, action: str, selector: str, page: Page):

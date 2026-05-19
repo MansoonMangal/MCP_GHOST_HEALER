@@ -27,10 +27,10 @@ def _text_similarity(orig: Dict, cand: Dict) -> float:
     """Compare visible text content using token sort ratio (handles word order)."""
     orig_text = (orig.get("text") or "").strip().lower()
     cand_text = (cand.get("text") or "").strip().lower()
-    if not orig_text and not cand_text:
-        return 50.0   # Both empty → neutral
-    if not orig_text or not cand_text:
-        return 10.0   # One empty → low score (not zero, preserves other features)
+    if not orig_text:
+        return 100.0  # Original didn't specify text constraint -> neutral/perfect score
+    if not cand_text:
+        return 10.0   # Original required text, candidate has none -> penalize
     return fuzz.token_sort_ratio(orig_text, cand_text)
 
 
@@ -56,9 +56,13 @@ def _attribute_similarity(orig: Dict, cand: Dict) -> float:
         orig_val = str(orig.get(attr) or "").strip().lower()
         cand_val = str(cand.get(attr) or "").strip().lower()
         # If the original selector required an attribute, we check how closely it matches the candidate's.
-        # fuzz.ratio("email", "user-email") returns a percentage score based on text similarity.
         if orig_val and cand_val:
-            score = fuzz.ratio(orig_val, cand_val)
+            if orig_val == cand_val:
+                score = 100.0
+            elif orig_val in cand_val or cand_val in orig_val:
+                score = 85.0 + (fuzz.ratio(orig_val, cand_val) * 0.15)  # Boost score for substring matches
+            else:
+                score = fuzz.ratio(orig_val, cand_val)
         elif not orig_val and cand_val:
             score = 100.0  # Original didn't specify, candidate has it -> ignore/don't penalize
         elif not orig_val and not cand_val:
@@ -66,7 +70,6 @@ def _attribute_similarity(orig: Dict, cand: Dict) -> float:
         else:
             score = 0.0    # Original required it, candidate missing it -> penalize
 
-        # Multiply the score by how important this attribute is (its weight)
         weighted_sum += score * weight
         total_weight += weight
 

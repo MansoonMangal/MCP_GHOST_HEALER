@@ -29,6 +29,10 @@ public class GhostWebElement implements WebElement {
                 
                 if (healedLocator != null) {
                     System.out.println("[GHOST] Healed locator: " + healedLocator);
+                    
+                    // Source patch!
+                    SourceHealer.applyFix(locator, healedLocator);
+
                     healerClient.writeToReport(locator, healedLocator, action, "Unknown", url);
                     this.element = driver.findElement(By.cssSelector(healedLocator));
                     this.locator = healedLocator;

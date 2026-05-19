@@ -5,7 +5,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class GhostWebDriver implements WebDriver {
+/**
+ * 👻 Ghost WebDriver Wrapper
+ * Wraps Selenium WebDriver to intercept findElement/findElements calls,
+ * trigger AI locator healing, perform automated source-code patching,
+ * and implement JavascriptExecutor to support casting safety.
+ */
+public class GhostWebDriver implements WebDriver, JavascriptExecutor {
     private WebDriver driver;
     private GhostHealerClient healerClient;
 
@@ -31,26 +37,61 @@ public class GhostWebDriver implements WebDriver {
 
     @Override
     public List<WebElement> findElements(By by) {
-        return driver.findElements(by).stream()
-                .map(e -> new GhostWebElement(e, driver, by.toString(), healerClient))
-                .collect(Collectors.toList());
+        try {
+            List<WebElement> elements = driver.findElements(by);
+            if (elements.isEmpty()) {
+                throw new NoSuchElementException("No elements found matching: " + by.toString());
+            }
+            return elements.stream()
+                    .map(e -> new GhostWebElement(e, driver, getRawSelector(by), healerClient))
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            String rawSelector = getRawSelector(by);
+            System.out.println("[GHOST] findElements failed for locator: " + rawSelector + ". Requesting AI heal...");
+            try {
+                String dom = (String) executeScript("return document.documentElement.outerHTML");
+                String url = driver.getCurrentUrl();
+                String healedLocator = healerClient.healLocator(rawSelector, "find", dom, url);
+                
+                if (healedLocator != null) {
+                    System.out.println("[GHOST] Healed locator: " + healedLocator);
+                    
+                    // Source patch!
+                    SourceHealer.applyFix(rawSelector, healedLocator);
+
+                    healerClient.writeToReport(rawSelector, healedLocator, "find", "Unknown", url);
+                    List<WebElement> healedElements = driver.findElements(By.cssSelector(healedLocator));
+                    return healedElements.stream()
+                            .map(e -> new GhostWebElement(e, driver, healedLocator, healerClient))
+                            .collect(Collectors.toList());
+                }
+            } catch (Exception ex) {
+                // ignore
+            }
+            throw e;
+        }
     }
 
     @Override
     public WebElement findElement(By by) {
+        String rawSelector = getRawSelector(by);
         try {
             WebElement element = driver.findElement(by);
-            return new GhostWebElement(element, driver, by.toString(), healerClient);
+            return new GhostWebElement(element, driver, rawSelector, healerClient);
         } catch (NoSuchElementException e) {
-            System.out.println("[GHOST] findElement failed for locator: " + by.toString() + ". Requesting AI heal...");
+            System.out.println("[GHOST] findElement failed for locator: " + rawSelector + ". Requesting AI heal...");
             try {
-                String dom = (String) ((JavascriptExecutor) driver).executeScript("return document.documentElement.outerHTML");
+                String dom = (String) executeScript("return document.documentElement.outerHTML");
                 String url = driver.getCurrentUrl();
-                String healedLocator = healerClient.healLocator(by.toString(), "find", dom, url);
+                String healedLocator = healerClient.healLocator(rawSelector, "find", dom, url);
                 
                 if (healedLocator != null) {
                     System.out.println("[GHOST] Healed locator: " + healedLocator);
-                    healerClient.writeToReport(by.toString(), healedLocator, "find", "Unknown", url);
+                    
+                    // Source patch!
+                    SourceHealer.applyFix(rawSelector, healedLocator);
+
+                    healerClient.writeToReport(rawSelector, healedLocator, "find", "Unknown", url);
                     WebElement healedElement = driver.findElement(By.cssSelector(healedLocator));
                     return new GhostWebElement(healedElement, driver, healedLocator, healerClient);
                 } else {
@@ -60,6 +101,14 @@ public class GhostWebDriver implements WebDriver {
                 throw new RuntimeException("Heal failed", ex);
             }
         }
+    }
+
+    private String getRawSelector(By by) {
+        String selectorStr = by.toString();
+        if (selectorStr.contains(": ")) {
+            return selectorStr.substring(selectorStr.indexOf(": ") + 2);
+        }
+        return selectorStr;
     }
 
     @Override
@@ -100,5 +149,16 @@ public class GhostWebDriver implements WebDriver {
     @Override
     public Options manage() {
         return driver.manage();
+    }
+
+    // JavascriptExecutor implementation
+    @Override
+    public Object executeScript(String script, Object... args) {
+        return ((JavascriptExecutor) driver).executeScript(script, args);
+    }
+
+    @Override
+    public Object executeAsyncScript(String script, Object... args) {
+        return ((JavascriptExecutor) driver).executeAsyncScript(script, args);
     }
 }

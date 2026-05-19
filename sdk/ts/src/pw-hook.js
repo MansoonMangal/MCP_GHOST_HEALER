@@ -102,7 +102,20 @@ function findCallerFile() {
   for (const line of stack.split('\n')) {
     const m = line.match(/\((.*):(\d+):\d+\)/) || line.match(/at (.*):(\d+):\d+/);
     if (!m) continue;
-    const fp = m[1], ln = parseInt(m[2], 10) || 0;
+    let fp = m[1];
+    const ln = parseInt(m[2], 10) || 0;
+
+    // Convert file:/// URIs (ESM style under Node/ts-node) to standard local paths
+    if (fp.startsWith('file:///')) {
+      fp = fp.substring(8);
+    }
+    try {
+      fp = decodeURIComponent(fp);
+    } catch (e) {}
+    if (fp.startsWith('/') && fp.match(/^\/[a-zA-Z]:/)) {
+      fp = fp.substring(1);
+    }
+
     const isInternal =
       fp.includes('node_modules') ||
       fp.includes('pw-hook') ||
@@ -167,9 +180,14 @@ function applySourceFix(filePath, lineNumber, oldSelector, newSelector) {
 // selector    — the broken selector string
 // action      — 'click', 'fill', etc.
 
-async function handleFailure(page, selector, action) {
+async function handleFailure(page, selector, action, locator = null) {
   const uuid       = genId();
-  const callerInfo = findCallerFile();
+  let callerInfo   = null;
+  if (locator && locator.__ghost_creation_caller) {
+    callerInfo = locator.__ghost_creation_caller;
+  } else {
+    callerInfo = findCallerFile();
+  }
   const url        = page.url();
   const wsRoot     = findWorkspaceRoot();
   const queueDir   = getQueueDir();
@@ -241,10 +259,27 @@ function patchLocatorProto(locator) {
         const selector = this.__ghost_selector || String(this);
         const page     = this.__ghost_page;
         console.log(`\n[GHOST] ❌ Locator failure! '${selector}' → action '${action}' failed.`);
-        if (page) await handleFailure(page, selector, action);
+        if (page) await handleFailure(page, selector, action, this);
         throw err; // ← re-throw so Playwright marks test step as failed
       }
     };
+  }
+
+  const subMethods = ['locator', 'first', 'last', 'nth', 'filter'];
+  for (const method of subMethods) {
+    if (typeof proto[method] !== 'function' || proto[method].__ghost_sub_patched) continue;
+    const original = proto[method];
+    proto[method] = function (...args) {
+      const loc = original.apply(this, args);
+      if (loc && typeof loc === 'object') {
+        loc.__ghost_page = this.__ghost_page;
+        loc.__ghost_selector = this.__ghost_selector || String(this);
+        loc.__ghost_creation_caller = this.__ghost_creation_caller;
+        patchLocatorProto(loc);
+      }
+      return loc;
+    };
+    proto[method].__ghost_sub_patched = true;
   }
 }
 
@@ -283,6 +318,7 @@ function patchPageProto(page) {
       const loc = origLocator.call(this, selector, ...args);
       loc.__ghost_page     = this;
       loc.__ghost_selector = selector;
+      loc.__ghost_creation_caller = findCallerFile();
       patchLocatorProto(loc);
       return loc;
     };
@@ -297,35 +333,78 @@ function patchPageProto(page) {
 Module._load = function (request, parent, isMain) {
   const exports = originalLoad.apply(this, arguments);
 
-  if ((request === 'playwright-core' || request === 'playwright') &&
-       exports && exports.chromium && !exports.__ghost_patched) {
-    exports.__ghost_patched = true;
+  if ((request === 'playwright-core' || request === 'playwright' || request === '@playwright/test') && exports) {
+    if (exports.chromium && !exports.__ghost_patched) {
+      exports.__ghost_patched = true;
 
-    const origLaunch = exports.chromium.launch;
-    exports.chromium.launch = async function (...args) {
-      const browser = await origLaunch.apply(this, args);
+      const origLaunch = exports.chromium.launch;
+      exports.chromium.launch = async function (...args) {
+        const browser = await origLaunch.apply(this, args);
 
-      const origNewContext = browser.newContext;
-      browser.newContext = async function (...cArgs) {
-        const ctx = await origNewContext.apply(this, cArgs);
-        const origNewPage = ctx.newPage;
-        ctx.newPage = async function (...pArgs) {
-          const page = await origNewPage.apply(this, pArgs);
+        const origNewContext = browser.newContext;
+        browser.newContext = async function (...cArgs) {
+          const ctx = await origNewContext.apply(this, cArgs);
+          const origNewPage = ctx.newPage;
+          ctx.newPage = async function (...pArgs) {
+            const page = await origNewPage.apply(this, pArgs);
+            patchPageProto(page);
+            return page;
+          };
+          return ctx;
+        };
+
+        const origBrowserNewPage = browser.newPage;
+        browser.newPage = async function (...pArgs) {
+          const page = await origBrowserNewPage.apply(this, pArgs);
           patchPageProto(page);
           return page;
         };
-        return ctx;
-      };
 
-      const origBrowserNewPage = browser.newPage;
-      browser.newPage = async function (...pArgs) {
-        const page = await origBrowserNewPage.apply(this, pArgs);
-        patchPageProto(page);
-        return page;
+        return browser;
       };
+    }
 
-      return browser;
-    };
+    if (exports.expect && typeof exports.expect === 'function' && !exports.expect.__ghost_patched) {
+      const originalExpect = exports.expect;
+
+      function wrapExpect(expectFn) {
+        const newExpect = function (actual, ...args) {
+          const matchers = expectFn(actual, ...args);
+          if (actual && actual.__ghost_page && actual.__ghost_selector) {
+            const page = actual.__ghost_page;
+            const selector = actual.__ghost_selector;
+
+            for (const key of Object.keys(matchers)) {
+              if (typeof matchers[key] === 'function' && !matchers[key].__ghost_patched) {
+                const originalMatcher = matchers[key];
+                matchers[key] = async function (...matcherArgs) {
+                  try {
+                    return await originalMatcher.apply(this, matcherArgs);
+                  } catch (err) {
+                    console.log(`\n[GHOST] ❌ Assertion failure! '${selector}' → expect(locator).${key}() failed.`);
+                    if (page) {
+                      await handleFailure(page, selector, 'wait', actual);
+                    }
+                    throw err;
+                  }
+                };
+                matchers[key].__ghost_patched = true;
+              }
+            }
+          }
+          return matchers;
+        };
+        Object.assign(newExpect, expectFn);
+        return newExpect;
+      }
+
+      const newExpect = wrapExpect(originalExpect);
+      if (typeof originalExpect.soft === 'function') {
+        newExpect.soft = wrapExpect(originalExpect.soft);
+      }
+      exports.expect = newExpect;
+      exports.expect.__ghost_patched = true;
+    }
   }
 
   return exports;
