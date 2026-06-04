@@ -12,6 +12,7 @@ from config.settings import settings
 
 PUBLIC_PATHS = frozenset({
     "/health",
+    "/health/ready",
     "/api/health",
     "/docs",
     "/openapi.json",

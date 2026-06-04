@@ -3,11 +3,13 @@ services:
     name: ghost-healer-brain
     env: docker
     dockerContext: mcp-server
-    dockerfilePath: mcp-server/Dockerfile
+    dockerfilePath: ./mcp-server/Dockerfile
     plan: free
     region: ohio
     envVars:
       - key: PYTHONUNBUFFERED
+        value: "1"
+      - key: WEB_CONCURRENCY
         value: "1"
       - key: MCP_DEBUG
         value: "false"

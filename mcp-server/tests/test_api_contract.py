@@ -26,6 +26,17 @@ def test_readiness_endpoint():
     assert r.json()["ready"] is True
 
 
+def test_readiness_public_when_api_key_required(monkeypatch):
+    """Render health checks must work without X-API-Key when GHOST_API_KEY is set."""
+    from config.settings import settings
+
+    monkeypatch.setenv("GHOST_API_KEY", "test-secret-key")
+    monkeypatch.setattr(settings, "api_key", "test-secret-key")
+    r = client.get("/health/ready")
+    assert r.status_code == 200
+    assert r.json()["ready"] is True
+
+
 def test_list_mcp_tools():
     r = client.get("/api/mcp/v1/tools")
     assert r.status_code == 200

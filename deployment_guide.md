@@ -1,5 +1,7 @@
 # Production Deployment Guide: Ghost Healer
 
+**Full step-by-step guide:** [docs/DEPLOY_COMPLETE.md](docs/DEPLOY_COMPLETE.md) (Render + SDK + verification).
+
 Deploy the MCP-first Brain and configure SDK clients for production usage.
 
 ## 1) Deploy Brain on Render

@@ -160,7 +160,7 @@ Key endpoints:
 | `POST /api/heal-feedback` | Accept/reject feedback for adaptive scoring |
 | `GET /api/pending-fixes` | Human-in-the-loop approval queue |
 
-Deploy with [render.yaml](render.yaml). Set `GHOST_API_KEY` in production.
+Deploy with [render.yaml](render.yaml). **Step-by-step:** [docs/DEPLOY_COMPLETE.md](docs/DEPLOY_COMPLETE.md). Set `GHOST_API_KEY` in production.
 
 ---
 

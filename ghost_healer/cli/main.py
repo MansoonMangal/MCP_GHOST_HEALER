@@ -66,8 +66,11 @@ def doctor():
 
     console.print("[bold blue]Ghost Healer Diagnostics[/bold blue]")
 
-    if os.path.exists("ghost.yaml"):
-        console.print("  [OK] ghost.yaml found")
+    from ghost_healer.core.config import find_ghost_yaml
+
+    yaml_path = find_ghost_yaml()
+    if yaml_path:
+        console.print(f"  [OK] ghost.yaml found at {yaml_path}")
     else:
         console.print("  [WARN] ghost.yaml missing — using defaults")
 

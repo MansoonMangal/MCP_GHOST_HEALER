@@ -29,6 +29,9 @@ target/
 *.ear
 .mvn/
 
+# Nested duplicate clone (do not commit)
+MCP_CLIENT_SERVER_PROJECT/
+
 # ── Ghost Healer Specifics ────────────────────────────────────────────────────
 # Do NOT commit the local healing cache
 .ghost_cache.db

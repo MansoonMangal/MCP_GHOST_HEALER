@@ -28,15 +28,9 @@ RUN mkdir -p database reports/logs
 # Set PYTHONPATH so app/main.py can import from sibling packages
 ENV PYTHONPATH=/app
 
-# Expose port
+# Render injects PORT at runtime; entrypoint expands it (exec-form CMD does not)
+RUN chmod +x /app/entrypoint.sh
+
 EXPOSE 8000
 
-# Run with Gunicorn + Uvicorn workers (production-grade)
-# Render sets $PORT dynamically; default to 8000 for local dev
-CMD gunicorn app.main:app \
-    --worker-class uvicorn.workers.UvicornWorker \
-    --workers 2 \
-    --bind 0.0.0.0:${PORT:-8000} \
-    --timeout 120 \
-    --keep-alive 5 \
-    --log-level info
+CMD ["/app/entrypoint.sh"]
