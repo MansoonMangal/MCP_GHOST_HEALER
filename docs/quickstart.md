@@ -1,51 +1,72 @@
-# ⏱️ Ghost Healer: 5-Minute Quickstart
+# Ghost Healer 5-Minute Quickstart
 
-Get your first self-healing automation script running in minutes.
+Get self-healing running with zero test-script edits.
 
-## 1. Installation
+## 1) Install SDK
+
+From project root:
+
 ```bash
-pip install ghost-healer
+pip install .
 ```
 
-## 2. Setup the Brain
-Deploy the AI Brain using Docker:
+## 2) Configure Brain
+
+Create/update `ghost.yaml`:
+
+```yaml
+mcp_server:
+  url: "https://ghost-healer-brain.onrender.com"
+  protocol: "mcp-first"
+  confidence_threshold: 0.5
+```
+
+Use local Brain instead (optional):
+
 ```bash
 cd mcp-server
-docker-compose up -d
+pip install -r requirements.txt
+python -m uvicorn app.main:app --port 8000
 ```
 
-## 3. Bootstrap your Project
-In your automation repository, run:
+Then set:
+
 ```bash
-ghost-healer init
-```
-This will create:
-- `ghost.yaml`: Central configuration.
-- `conftest.py`: Automatic Playwright protection.
-- `pytest.ini`: Standard testing config.
-
-## 4. Write a Native Test
-Create `tests/test_login.py`:
-```python
-def test_login(page):
-    page.goto("https://example.com/login")
-    
-    # These standard locators will heal themselves if they break!
-    page.fill("#username", "admin")
-    page.fill("#password", "password123")
-    page.click("button[type='submit']")
+export GHOST_BRAIN_URL="http://127.0.0.1:8000"
 ```
 
-## 5. Execute
+## 3) Run Existing Tests (No Code Changes)
+
 ```bash
-pytest
+pytest -v
 ```
 
----
+The pytest plugin auto-activates protection for:
 
-## 🔍 How to Verify?
-To see healing in action, manually change an ID in your `test_login.py` to something wrong (e.g., `#username-wrong`). When you run `pytest`, Ghost Healer will:
-1. Intercept the failure.
-2. Find the correct element using AI.
-3. Complete the login successfully.
-4. **Rewrite your source code** to fix the locator permanently (if `auto_patch` is enabled in `ghost.yaml`).
+- Playwright `page` fixture
+- Selenium fixtures (`driver`, `browser`, `webdriver`, `selenium_driver`)
+
+## 4) Verify Setup
+
+```bash
+ghost-healer doctor
+ghost-healer report
+```
+
+If you use `suggestion` or `approval` mode:
+
+```bash
+ghost-healer review
+```
+
+## 5) Confirm Healing
+
+Break a locator in any existing UI test and run again.
+
+Expected behavior:
+
+1. Failure is intercepted.
+2. Brain returns healed candidate.
+3. In `runtime`, test retries with healed locator (and may patch source if enabled).
+4. Event appears in `reports/ghost/suggested-fixes.json`.
+5. In non-runtime modes, item goes to `reports/ghost/pending-fixes.json`.

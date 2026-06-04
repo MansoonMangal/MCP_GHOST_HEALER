@@ -1,65 +1,96 @@
-# 🚀 Production Deployment Guide: Ghost Healer
+# Production Deployment Guide: Ghost Healer
 
-This guide covers the deployment of the **Ghost Healer AI Brain** to a production-ready environment and the distribution of the **Ghost Healer SDK** to your team.
+Deploy the MCP-first Brain and configure SDK clients for production usage.
 
----
+## 1) Deploy Brain on Render
 
-## 1. 🧠 Deploying the AI Brain (FastAPI)
+Use the included `render.yaml`.
 
-The Brain is a centralized service that must be accessible to all CI/CD pipelines.
+1. Push repository to GitHub.
+2. In Render, choose **New -> Blueprint** and connect the repo.
+3. Render provisions:
+   - Web service (`ghost-healer-brain`)
+   - MongoDB (from blueprint)
+4. After first deploy, copy:
+   - service URL (for SDK clients)
+   - generated `GHOST_API_KEY`
 
-### Option A: Render Blueprint (One-Click)
-1. **Push your code** to a GitHub repository.
-2. Log in to [Render](https://dashboard.render.com).
-3. Click **New +** -> **Blueprint**.
-4. Connect your repository. Render will automatically detect the `render.yaml` file and provision:
-   - The FastAPI AI Brain service.
-   - A free MongoDB instance for analytics and persistent storage.
-5. Once deployed, copy your service URL (e.g., `https://ghost-brain.onrender.com`).
+## 2) Required Production Environment Variables
 
-### Option B: AWS App Runner / ECS
-1. **Push Image**: Build and push the `mcp-server` image to AWS ECR.
-2. **Deploy**: Use AWS App Runner for a managed experience:
-   - **Service Type**: Source code repository.
-   - **Runtime**: Docker.
-   - **Port**: 8000.
-3. **IAM**: Ensure the service has permissions to write to CloudWatch for logs.
+Set on Render service:
 
----
+- `GHOST_API_KEY` (required)
+- `MONGO_URI` (from Render DB)
+- `LOG_LEVEL=INFO`
+- `MCP_DEBUG=false`
+- `CORS_ORIGINS` (restrict in enterprise)
+- `MAX_REQUEST_BYTES` (e.g. `5242880`)
 
-## 2. 📦 Distributing the SDK
+## 3) Client Configuration
 
-### Python Client
-To make the framework installable via `pip install ghost-healer`:
-
-1. **Build the package**:
-   ```bash
-   pip install build
-   python -m build
-   ```
-2. **Publish to PyPI** (or your internal Artifactory/Nexus):
-   ```bash
-   twine upload dist/*
-   ```
-3. **Usage**:
-   Teams simply run `pip install ghost-healer` and then `ghost-healer init`.
-
----
-
-## ⚙️ Enterprise Configuration
-Once deployed, configure your environment to point to the production Brain:
+In CI/CD (GitHub Actions/Jenkins/etc):
 
 ```bash
-# In your CI/CD settings (Jenkins, GitHub Actions, etc.)
-export MCP_SERVER_URL="https://your-ghost-brain.onrender.com"
+export GHOST_BRAIN_URL="https://your-ghost-brain.onrender.com"
+export GHOST_API_KEY="<render-secret>"
 ```
 
-### 📈 Health Check
-Verify your deployment by visiting:
-- **API Docs**: `https://<your-url>/docs` (FastAPI Swagger UI)
-- **Health**: `https://<your-url>/health`
-- **Analytics**: `https://<your-url>/api/confidence-report`
+Or in `ghost.yaml`:
 
----
+```yaml
+mcp_server:
+  url: "https://your-ghost-brain.onrender.com"
+  protocol: "mcp-first"
+  api_key: ""
+```
 
-**Built for the Enterprise. Powered by AI.** 🛡️🌍🏆✨
+Prefer env vars for secrets.
+
+## 4) Health and Smoke Validation
+
+Check endpoints:
+
+- `/health`
+- `/health/ready`
+- `/api/mcp/v1/tools`
+- `/docs`
+
+Run local gate and SLO checks:
+
+```bash
+python scripts/release_gate.py --stage ga
+python scripts/verify_slo.py --base-url "https://your-ghost-brain.onrender.com" --api-key "$GHOST_API_KEY"
+```
+
+## 5) Package Distribution
+
+### Python (`ghost-healer`)
+
+```bash
+pip install build twine
+python -m build
+twine upload dist/*
+```
+
+### TypeScript / JavaScript (`ghost-healer-ts`)
+
+```bash
+cd sdk/ts
+npm install
+npm run build
+npm publish
+```
+
+### Java
+
+Publish framework/agent artifacts to Maven Central or internal Nexus.
+
+## 6) Recommended Release Order
+
+Follow staged release gates:
+
+1. Beta (`release_gate.py --stage beta`)
+2. RC (`release_gate.py --stage rc`)
+3. GA (`release_gate.py --stage ga`)
+
+Reference: `release_checklist.md`.

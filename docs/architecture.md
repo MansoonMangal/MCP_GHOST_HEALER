@@ -1,34 +1,71 @@
-# 🏛️ Ghost Healer: Enterprise Architecture
+# Ghost Healer Architecture
 
-Ghost Healer is designed as a distributed, language-agnostic platform for AI-powered automation maintenance.
+Ghost Healer is a distributed, language-agnostic self-healing platform with an MCP-first Brain and multi-language SDK/adapters.
 
-## 🧩 Component Overview
+## Components
 
-### 1. The Ghost SDK (`ghost_healer`)
-The client-side library that wraps automation drivers (Playwright, Selenium). 
-- **Adapters**: Concrete implementations for different tools.
-- **Healing Engine**: Intercepts failures and orchestrates the recovery flow.
-- **Local Cache**: SQLite-based persistence to avoid redundant AI calls.
+### 1) SDK and Adapters
 
-### 2. The AI Brain (`mcp-server`)
-A centralized FastAPI service that performs the heavy lifting.
-- **DOM DNA Matcher**: Uses structural analysis to find shifted elements.
-- **LLM Integration**: Optional deep analysis for semantic changes.
-- **Analytics Engine**: Stores healing trends and confidence scores.
+- `ghost_healer/` (Python): pytest plugin, Playwright/Selenium adapters, CLI, cache.
+- `sdk/ts/` (TS/JS): auto-activation hook, Playwright + Selenium runtime interception.
+- `ghost_healer/framework/java/` (Java): client classes, JUnit 5 extension, optional javaagent.
 
-## 🔄 The Healing Lifecycle
+Responsibilities:
 
-1. **Failure Detection**: The adapter catches a `TimeoutError`.
-2. **Cache Check**: The SDK checks if a healed locator exists in SQLite.
-3. **State Capture**: If not in cache, the SDK captures the DOM and stack trace.
-4. **AI Analysis**: The Brain analyzes the state and returns a new locator.
-5. **Execution**: The SDK performs the action with the healed locator.
-6. **Persistence**:
-   - **Local**: SQLite cache is updated.
-   - **Source**: (Optional) The test script is patched with the new locator.
-7. **Reporting**: A JSON execution trace is saved.
+- Detect locator failures.
+- Capture DOM/page context.
+- Call Brain (MCP REST shim first, legacy REST fallback).
+- Retry and/or queue pending fixes depending on healing mode.
 
-## 🚀 Scalability & Deployment
-- **Horizontal Scaling**: The Brain is stateless and can be deployed in a K8s cluster.
-- **Storage**: Supports SQLite (local) and MongoDB (centralized) for caching.
-- **Communication**: gRPC or RESTful API.
+### 2) AI Brain (`mcp-server`)
+
+FastAPI service with MCP gateway:
+
+- MCP tools mount: `/mcp` (Streamable HTTP)
+- MCP REST shim: `/api/mcp/v1/tools/{tool}`
+- Legacy REST heal endpoint: `/api/heal-locator`
+
+Core modules:
+
+- `services/healing_service.py`: pipeline orchestration.
+- `ai_engine/*`: DOM parsing + feature extraction + similarity scoring.
+- `controllers/healing_controller.py`: shared API response shaping.
+- `utils/db_manager.py`: JSON fallback or Mongo persistence.
+
+### 3) Persistence and Reports
+
+- Local/Dev storage (JSON files under `mcp-server/database/`).
+- Production storage (MongoDB via `MONGO_URI`).
+- SDK output under `reports/ghost/`:
+  - `suggested-fixes.json`
+  - `pending-fixes.json`
+  - `session_*.json`
+
+## Healing Lifecycle
+
+1. SDK intercepts a locator failure.
+2. SDK checks local cache (when enabled).
+3. SDK sends selector + DOM to Brain.
+4. Brain ranks candidates and decides `AUTO_HEAL` / `MANUAL_REVIEW` / `FAIL`.
+5. SDK behavior by mode:
+   - `runtime`: retry healed selector, optional source patch.
+   - `suggestion`/`approval`: queue pending fix for review.
+   - `strict`: accept only high-confidence heals.
+6. Events and scores are persisted for analytics/feedback.
+
+## Communication Contracts
+
+- Confidence exposed to SDK/API consumers as `0.0..1.0`.
+- Tenant/project context supported through:
+  - `X-Ghost-Tenant`
+  - `X-Ghost-Project`
+
+## Deployment Model
+
+- Stateless Brain container (Render-ready via `render.yaml`).
+- Health endpoints:
+  - `/health`
+  - `/health/ready`
+- Security:
+  - API key support (`GHOST_API_KEY`)
+  - payload size limit (`MAX_REQUEST_BYTES`)

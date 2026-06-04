@@ -38,12 +38,22 @@ DB_PATH = Path(settings.db_path)
 HEALED_LOCATORS_FILE = DB_PATH / "healed_locators.json"
 FAILURE_LOGS_FILE = DB_PATH / "failure_logs.json"
 CONFIDENCE_SCORES_FILE = DB_PATH / "confidence_scores.json"
+FEEDBACK_FILE = DB_PATH / "heal_feedback.json"
+PENDING_FIXES_FILE = DB_PATH / "pending_fixes.json"
+PROJECT_PROFILES_FILE = DB_PATH / "project_profiles.json"
 
 
 def _ensure_db_files() -> None:
     """Initialize empty JSON arrays if database files don't exist."""
     DB_PATH.mkdir(parents=True, exist_ok=True)
-    for filepath in [HEALED_LOCATORS_FILE, FAILURE_LOGS_FILE, CONFIDENCE_SCORES_FILE]:
+    for filepath in [
+        HEALED_LOCATORS_FILE,
+        FAILURE_LOGS_FILE,
+        CONFIDENCE_SCORES_FILE,
+        FEEDBACK_FILE,
+        PENDING_FIXES_FILE,
+        PROJECT_PROFILES_FILE,
+    ]:
         if not filepath.exists():
             filepath.write_text("[]", encoding="utf-8")
 
@@ -192,3 +202,140 @@ def get_confidence_report_data() -> Dict[str, Any]:
         "score_distribution": score_dist,
         "most_unstable_locators": unstable
     }
+
+
+def save_heal_feedback(entry: Dict[str, Any]) -> None:
+    """Persist user feedback for adaptive scoring and quality tracking."""
+    entry.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
+    entry.setdefault("feedback_id", str(uuid.uuid4()))
+
+    if _USE_MONGO:
+        _mongo_db["heal_feedback"].insert_one(entry)
+        return
+
+    rows = _read_json(FEEDBACK_FILE)
+    rows.append(entry)
+    _write_json(FEEDBACK_FILE, rows)
+
+
+def get_feedback_summary(
+    tenant_id: Optional[str] = None,
+    project_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Aggregate acceptance/rejection rates for healed suggestions."""
+    if _USE_MONGO:
+        query: Dict[str, Any] = {}
+        if tenant_id:
+            query["tenant_id"] = tenant_id
+        if project_id:
+            query["project_id"] = project_id
+        rows = list(_mongo_db["heal_feedback"].find(query, {"_id": 0}))
+    else:
+        rows = _read_json(FEEDBACK_FILE)
+        if tenant_id:
+            rows = [r for r in rows if r.get("tenant_id") == tenant_id]
+        if project_id:
+            rows = [r for r in rows if r.get("project_id") == project_id]
+
+    accepted = sum(1 for r in rows if r.get("accepted") is True)
+    rejected = sum(1 for r in rows if r.get("accepted") is False)
+    total = len(rows)
+    acceptance_rate = (accepted / total * 100) if total else 0.0
+    return {
+        "total_feedback": total,
+        "accepted_count": accepted,
+        "rejected_count": rejected,
+        "acceptance_rate_percent": round(acceptance_rate, 2),
+    }
+
+
+def save_pending_fix(entry: Dict[str, Any]) -> None:
+    """Persist pending fix row for approval workflow."""
+    entry.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
+    entry.setdefault("pending_id", str(uuid.uuid4()))
+    entry.setdefault("status", "pending_review")
+
+    if _USE_MONGO:
+        _mongo_db["pending_fixes"].insert_one(entry)
+        return
+
+    rows = _read_json(PENDING_FIXES_FILE)
+    rows.append(entry)
+    _write_json(PENDING_FIXES_FILE, rows)
+
+
+def list_pending_fixes(
+    tenant_id: Optional[str] = None,
+    project_id: Optional[str] = None,
+    status: str = "pending_review",
+    limit: int = 100,
+) -> List[Dict[str, Any]]:
+    """List pending fixes for approval dashboard/CLI."""
+    if _USE_MONGO:
+        query: Dict[str, Any] = {"status": status} if status else {}
+        if tenant_id:
+            query["tenant_id"] = tenant_id
+        if project_id:
+            query["project_id"] = project_id
+        rows = list(
+            _mongo_db["pending_fixes"].find(query, {"_id": 0}).sort("timestamp", -1).limit(limit)
+        )
+        return rows
+
+    rows = _read_json(PENDING_FIXES_FILE)
+    if status:
+        rows = [r for r in rows if r.get("status") == status]
+    if tenant_id:
+        rows = [r for r in rows if r.get("tenant_id") == tenant_id]
+    if project_id:
+        rows = [r for r in rows if r.get("project_id") == project_id]
+    rows = sorted(rows, key=lambda r: r.get("timestamp", ""), reverse=True)
+    return rows[:limit]
+
+
+def update_pending_fix_status(pending_id: str, status: str) -> bool:
+    """Update pending fix status (approved/rejected/applied)."""
+    if _USE_MONGO:
+        result = _mongo_db["pending_fixes"].update_one(
+            {"pending_id": pending_id},
+            {"$set": {"status": status, "updated_at": datetime.now(timezone.utc).isoformat()}},
+        )
+        return result.modified_count > 0
+
+    rows = _read_json(PENDING_FIXES_FILE)
+    changed = False
+    for row in rows:
+        if row.get("pending_id") == pending_id:
+            row["status"] = status
+            row["updated_at"] = datetime.now(timezone.utc).isoformat()
+            changed = True
+            break
+    if changed:
+        _write_json(PENDING_FIXES_FILE, rows)
+    return changed
+
+
+def get_project_weight_overrides(
+    base_weights: Dict[str, float],
+    tenant_id: Optional[str] = None,
+    project_id: Optional[str] = None,
+) -> Dict[str, float]:
+    """
+    Lightweight adaptive weighting.
+    If acceptance rate is low, slightly increase semantic/structure emphasis.
+    """
+    summary = get_feedback_summary(tenant_id=tenant_id, project_id=project_id)
+    rate = summary.get("acceptance_rate_percent", 0.0)
+    if summary.get("total_feedback", 0) < 10:
+        return base_weights
+
+    adjusted = dict(base_weights)
+    if rate < 60:
+        adjusted["semantic_role"] = min(adjusted.get("semantic_role", 0.25) + 0.05, 0.4)
+        adjusted["dom_structure"] = min(adjusted.get("dom_structure", 0.2) + 0.03, 0.35)
+        adjusted["text_similarity"] = max(adjusted.get("text_similarity", 0.35) - 0.04, 0.1)
+
+    total = sum(adjusted.values()) or 1.0
+    for k in list(adjusted.keys()):
+        adjusted[k] = adjusted[k] / total
+    return adjusted

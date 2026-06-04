@@ -9,10 +9,19 @@ import types
 from typing import Any
 
 from ghost_healer.core.engine import ghost_engine
+from ghost_healer.core.config import settings
 from ghost_healer.utils.reporter import reporter
 from ghost_healer.utils.stack_parser import parse_stack_trace
 
 logger = logging.getLogger("GhostSelenium")
+
+
+def _should_apply_patch() -> bool:
+    return settings.healing.auto_patch and settings.healing.mode == "runtime"
+
+
+def _should_auto_retry() -> bool:
+    return settings.healing.mode == "runtime"
 
 
 def _get_css_selector(by: Any, value: str) -> str:
@@ -58,8 +67,8 @@ def _heal_and_retry_element(element: Any, driver: Any, selector: str, action: st
             filename, lineno = parse_stack_trace()
             print(f"[GHOST] [DEBUG] Resolved caller: {filename}:{lineno}")
 
-            # Apply source code patch on disk
-            if filename and lineno:
+            # Apply source code patch on disk (runtime mode only)
+            if filename and lineno and _should_apply_patch():
                 from ghost_healer.utils.source_healer import source_healer
                 source_healer.apply_fix(filename, lineno, selector, healed)
 
@@ -73,12 +82,25 @@ def _heal_and_retry_element(element: Any, driver: Any, selector: str, action: st
                 framework="selenium-python"
             )
 
-            from selenium.webdriver.common.by import By
-            # Find the new element
-            new_element = driver.find_element(By.CSS_SELECTOR, healed)
-            # Re-run the action on the new element
-            new_fn = getattr(new_element, original_fn.__name__)
-            return new_fn(*args, **kwargs)
+            if _should_auto_retry():
+                from selenium.webdriver.common.by import By
+                # Find the new element
+                new_element = driver.find_element(By.CSS_SELECTOR, healed)
+                # Re-run the action on the new element
+                new_fn = getattr(new_element, original_fn.__name__)
+                return new_fn(*args, **kwargs)
+
+            reporter.log_pending_fix(
+                original=selector,
+                healed=healed,
+                confidence=confidence,
+                action=action,
+                framework="selenium-python",
+                page_url=url,
+                file=filename,
+                line=lineno,
+            )
+            raise original_error
 
         print(f"[GHOST] [ERROR] Could not heal '{selector}'. Raising original error.")
         raise original_error
@@ -134,8 +156,8 @@ def protect_driver(driver: Any) -> Any:
                 filename, lineno = parse_stack_trace()
                 print(f"[GHOST] [DEBUG] Resolved caller: {filename}:{lineno}")
 
-                # Apply source code patch on disk
-                if filename and lineno:
+                # Apply source code patch on disk (runtime mode only)
+                if filename and lineno and _should_apply_patch():
                     from ghost_healer.utils.source_healer import source_healer
                     source_healer.apply_fix(filename, lineno, selector, healed)
 
@@ -149,9 +171,22 @@ def protect_driver(driver: Any) -> Any:
                     framework="selenium-python"
                 )
 
-                from selenium.webdriver.common.by import By
-                element = original_find_element(By.CSS_SELECTOR, healed)
-                return protect_element(element, driver, healed)
+                if _should_auto_retry():
+                    from selenium.webdriver.common.by import By
+                    element = original_find_element(By.CSS_SELECTOR, healed)
+                    return protect_element(element, driver, healed)
+
+                reporter.log_pending_fix(
+                    original=selector,
+                    healed=healed,
+                    confidence=confidence,
+                    action="find",
+                    framework="selenium-python",
+                    page_url=url,
+                    file=filename,
+                    line=lineno,
+                )
+                raise original_error
 
             logger.error(f"[GHOST] Could not heal '{selector}'. Raising original error.")
             raise original_error
@@ -176,8 +211,8 @@ def protect_driver(driver: Any) -> Any:
                 logger.info(f"[GHOST] Healed '{selector}' → '{healed}'")
                 filename, lineno = parse_stack_trace()
 
-                # Apply source code patch on disk
-                if filename and lineno:
+                # Apply source code patch on disk (runtime mode only)
+                if filename and lineno and _should_apply_patch():
                     from ghost_healer.utils.source_healer import source_healer
                     source_healer.apply_fix(filename, lineno, selector, healed)
 
@@ -190,9 +225,22 @@ def protect_driver(driver: Any) -> Any:
                     patched_file=filename,
                     framework="selenium-python"
                 )
-                from selenium.webdriver.common.by import By
-                elements = original_find_elements(By.CSS_SELECTOR, healed)
-                return [protect_element(e, driver, healed) for e in elements]
+                if _should_auto_retry():
+                    from selenium.webdriver.common.by import By
+                    elements = original_find_elements(By.CSS_SELECTOR, healed)
+                    return [protect_element(e, driver, healed) for e in elements]
+
+                reporter.log_pending_fix(
+                    original=selector,
+                    healed=healed,
+                    confidence=confidence,
+                    action="find",
+                    framework="selenium-python",
+                    page_url=url,
+                    file=filename,
+                    line=lineno,
+                )
+                raise original_error
 
             raise original_error
 

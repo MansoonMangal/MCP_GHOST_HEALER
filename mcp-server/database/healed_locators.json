@@ -2662,5 +2662,77 @@
     "dom_elements_analyzed": 29,
     "candidates_evaluated": 28,
     "action": "find"
+  },
+  {
+    "healing_id": "4da90dfc-8b8a-4e1e-9903-77c7f85a86de",
+    "test_name": null,
+    "original_locator": "#ok",
+    "healed_locator": "#ok",
+    "confidence_score": 91.19,
+    "confidence_level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "failure_reason": "element_not_found",
+    "page_url": "",
+    "timestamp": "2026-06-02T06:37:58.204376+00:00",
+    "was_successful": true,
+    "score_breakdown": {
+      "text_similarity": 100.0,
+      "attribute_similarity": 100.0,
+      "dom_structure_similarity": 55.94,
+      "semantic_role_similarity": 100.0,
+      "visibility_score": 100.0,
+      "final_score": 91.19
+    },
+    "dom_elements_analyzed": 1,
+    "candidates_evaluated": 1,
+    "action": "click"
+  },
+  {
+    "healing_id": "051264b2-14fc-4119-b2e3-bf5000080106",
+    "test_name": null,
+    "original_locator": "#ok",
+    "healed_locator": "#ok",
+    "confidence_score": 91.19,
+    "confidence_level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "failure_reason": "element_not_found",
+    "page_url": "",
+    "timestamp": "2026-06-02T06:37:58.453005+00:00",
+    "was_successful": true,
+    "score_breakdown": {
+      "text_similarity": 100.0,
+      "attribute_similarity": 100.0,
+      "dom_structure_similarity": 55.94,
+      "semantic_role_similarity": 100.0,
+      "visibility_score": 100.0,
+      "final_score": 91.19
+    },
+    "dom_elements_analyzed": 1,
+    "candidates_evaluated": 1,
+    "action": "click"
+  },
+  {
+    "healing_id": "c9675515-308e-4b07-b155-a8afc9775276",
+    "test_name": null,
+    "original_locator": "#submit-btn",
+    "healed_locator": "#submit-btn",
+    "confidence_score": 92.21,
+    "confidence_level": "HIGH",
+    "decision": "AUTO_HEAL",
+    "failure_reason": "element_not_found",
+    "page_url": "",
+    "timestamp": "2026-06-02T06:37:59.408136+00:00",
+    "was_successful": true,
+    "score_breakdown": {
+      "text_similarity": 100.0,
+      "attribute_similarity": 100.0,
+      "dom_structure_similarity": 61.06,
+      "semantic_role_similarity": 100.0,
+      "visibility_score": 100.0,
+      "final_score": 92.21
+    },
+    "dom_elements_analyzed": 2,
+    "candidates_evaluated": 2,
+    "action": "click"
   }
 ]

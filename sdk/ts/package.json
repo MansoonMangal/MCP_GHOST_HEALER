@@ -1,27 +1,41 @@
 {
   "name": "ghost-healer-ts",
-  "version": "1.0.15",
-  "description": "Universal AI Self-Healing SDK for Playwright TypeScript/JavaScript",
+  "version": "1.2.0",
+  "description": "Universal AI Self-Healing SDK for Playwright and Selenium (TS/JS)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "src/auto-activate.js",
+    "src/pw-hook.js"
   ],
+  "exports": {
+    ".": "./dist/index.js",
+    "./auto-activate": "./src/auto-activate.js",
+    "./pw-hook.js": "./src/pw-hook.js",
+    "./selenium-setup": "./dist/selenium-setup.js",
+    "./selenium-setup.js": "./dist/selenium-setup.js"
+  },
   "scripts": {
     "build": "tsc",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "postinstall": "node -e \"try{const p=require('path');const f=p.join(__dirname,'scripts','set-node-options.js');require(f)}catch(e){}\""
   },
   "keywords": [
     "playwright",
+    "selenium",
     "self-healing",
-    "ai",
-    "automation",
-    "ghost-healer"
+    "mcp",
+    "automation"
   ],
   "author": "Mansoon Mangal",
   "license": "MIT",
   "peerDependencies": {
     "@playwright/test": ">=1.30.0"
+  },
+  "peerDependenciesMeta": {
+    "@playwright/test": { "optional": true },
+    "selenium-webdriver": { "optional": true }
   },
   "devDependencies": {
     "@playwright/test": "^1.39.0",

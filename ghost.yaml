@@ -1,18 +1,25 @@
 mcp_server:
   url: "https://ghost-healer-brain.onrender.com"
   timeout: 30
-  confidence_threshold: -1.0
+  confidence_threshold: 0.5
+  protocol: "mcp-first"
+  api_key: ""
 
 healing:
-  mode: "runtime"          # runtime | suggestion
-  cache_enabled: true      # Use local SQLite cache
-  max_retries: 3           # Retries on cloud cold starts
-  retry_wait_seconds: 5    # Base wait between retries
+  mode: "runtime"
+  cache_enabled: true
+  max_retries: 3
+  retry_wait_seconds: 5
   framework: "playwright-python"
+  auto_patch: true
+  selenium_fixture_names:
+    - driver
+    - browser
+    - webdriver
+    - selenium_driver
 
 reporting:
-  enabled: true
   output_dir: "reports/ghost"
   format: "json"
-  save_traces: true        # Include Brain execution trace
+  save_traces: true
   min_confidence_to_log: 0.0

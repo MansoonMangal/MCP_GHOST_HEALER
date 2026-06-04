@@ -8,10 +8,19 @@ import time
 import logging
 from playwright.sync_api import Page, Locator
 from ghost_healer.core.engine import ghost_engine
+from ghost_healer.core.config import settings
 from ghost_healer.utils.reporter import reporter
 from ghost_healer.utils.stack_parser import parse_stack_trace
 
 logger = logging.getLogger("GhostPlaywright")
+
+
+def _should_apply_patch() -> bool:
+    return settings.healing.auto_patch and settings.healing.mode == "runtime"
+
+
+def _should_auto_retry() -> bool:
+    return settings.healing.mode == "runtime"
 
 
 # ── Page Level Patching ───────────────────────────────────────────────────────
@@ -30,8 +39,8 @@ def _heal_and_retry_page(page: Page, selector: str, action: str, original_fn, *a
             filename, lineno = parse_stack_trace()
             print(f"[GHOST] [DEBUG] Resolved caller: {filename}:{lineno}")
             
-            # Apply source code patch on disk
-            if filename and lineno:
+            # Apply source code patch on disk (runtime mode only)
+            if filename and lineno and _should_apply_patch():
                 from ghost_healer.utils.source_healer import source_healer
                 source_healer.apply_fix(filename, lineno, selector, healed)
 
@@ -47,7 +56,20 @@ def _heal_and_retry_page(page: Page, selector: str, action: str, original_fn, *a
                 line=lineno
             )
 
-            return original_fn(healed, *args, **kwargs)
+            if _should_auto_retry():
+                return original_fn(healed, *args, **kwargs)
+
+            reporter.log_pending_fix(
+                original=selector,
+                healed=healed,
+                confidence=confidence,
+                action=action,
+                framework="playwright-python",
+                page_url=page.url,
+                file=filename,
+                line=lineno,
+            )
+            raise original_error
 
         print(f"[GHOST] [ERROR] Could not heal '{selector}'. Raising original error.")
         raise original_error
@@ -78,8 +100,8 @@ def _heal_and_retry_locator(locator: Locator, selector: str, page: Page, action:
             filename, lineno = parse_stack_trace()
             print(f"[GHOST] [DEBUG] Resolved caller: {filename}:{lineno}")
 
-            # Apply source code patch on disk
-            if filename and lineno:
+            # Apply source code patch on disk (runtime mode only)
+            if filename and lineno and _should_apply_patch():
                 from ghost_healer.utils.source_healer import source_healer
                 source_healer.apply_fix(filename, lineno, selector, healed)
 
@@ -95,10 +117,22 @@ def _heal_and_retry_locator(locator: Locator, selector: str, page: Page, action:
                 line=lineno
             )
 
-            # Re-locate with healed selector
-            healed_locator = page.locator(healed)
-            healed_fn = getattr(healed_locator, original_fn.__name__)
-            return healed_fn(*args, **kwargs)
+            if _should_auto_retry():
+                healed_locator = page.locator(healed)
+                healed_fn = getattr(healed_locator, original_fn.__name__)
+                return healed_fn(*args, **kwargs)
+
+            reporter.log_pending_fix(
+                original=selector,
+                healed=healed,
+                confidence=confidence,
+                action=action,
+                framework="playwright-python",
+                page_url=page.url,
+                file=filename,
+                line=lineno,
+            )
+            raise original_error
 
         print(f"[GHOST] [ERROR] Could not heal locator '{selector}'. Raising original error.")
         raise original_error

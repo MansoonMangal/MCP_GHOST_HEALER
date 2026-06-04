@@ -1,5 +1,13 @@
 """
-Flask route definitions for the MCP Self-Healing Server.
+DEPRECATED — Flask routes retained for reference only.
+
+Use FastAPI app.main:app and controllers/healing_controller.py instead.
+"""
+import warnings
+warnings.warn("api/routes.py (Flask) is deprecated.", DeprecationWarning, stacklevel=1)
+
+"""
+Flask route definitions for the MCP Self-Healing Server (legacy).
 
 Endpoints:
   POST /api/heal-locator        - Main healing pipeline entry point

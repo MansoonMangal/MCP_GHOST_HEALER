@@ -20,7 +20,12 @@ from ai_engine.feature_extractor import extract_features_from_selector
 from ai_engine.similarity_engine import rank_candidates
 from services.confidence_engine import apply_confidence_rules
 from services.locator_validator import validate_locator
-from utils.db_manager import save_healing_record, save_failure_log, save_confidence_score
+from utils.db_manager import (
+    get_project_weight_overrides,
+    save_healing_record,
+    save_failure_log,
+    save_confidence_score,
+)
 from utils.logger import get_logger, log_healing_event, log_score_breakdown
 from config.settings import settings
 
@@ -35,6 +40,8 @@ def heal(
     action: str = "click",
     test_name: Optional[str] = None,
     element_hints: Optional[Dict[str, Any]] = None,
+    tenant_id: Optional[str] = None,
+    project_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Run the full self-healing pipeline. 
@@ -43,7 +50,11 @@ def heal(
     """
     healing_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc)
-    weights = settings.get_weights()
+    weights = get_project_weight_overrides(
+        settings.get_weights(),
+        tenant_id=tenant_id,
+        project_id=project_id,
+    )
 
     logger.info(
         f"[{healing_id}] Healing started | test={test_name} | locator={original_locator}",
@@ -126,6 +137,7 @@ def heal(
             }
             for c in ranked_elements
         ],
+        "weights_used": weights,
     }
 
     # ── Step 7: Persist record ────────────────────────────────────────────
@@ -145,6 +157,9 @@ def heal(
         "dom_elements_analyzed": total_scanned,
         "candidates_evaluated": len(candidates),
         "action": action,
+        "tenant_id": tenant_id or "default",
+        "project_id": project_id or "default",
+        "execution_trace": execution_trace,
     }
     save_healing_record(record)
     save_confidence_score({
@@ -172,6 +187,8 @@ def heal(
         "execution_trace": execution_trace,
         "test_name": test_name,
         "timestamp": timestamp,
+        "tenant_id": tenant_id or "default",
+        "project_id": project_id or "default",
     }
 
 

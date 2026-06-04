@@ -1,343 +1,321 @@
-# 👻 Universal Ghost Healer: Multi-Language & Tool Integration Cheatsheet
+# Ghost Healer: Multi-Language Demo and Integration Guide
 
-Welcome to the **Practical Integration Report** for the **Universal Ghost Healer AI Self-Healing Platform**. This document is a complete, step-by-step, self-contained guide designed to help you download the SDK, integrate the configuration, and run the self-healing framework across all **8 combinations** of the two leading automation tools (**Playwright & Selenium**) and the four core programming languages (**TypeScript, JavaScript, Python, and Java**).
+This guide shows how to run and integrate Ghost Healer across all **8 combinations**: **Playwright** and **Selenium** × **Python, TypeScript, JavaScript, Java**.
+
+**Design goal:** install the SDK and run tests — **no edits to test scripts**. Use `ghost.yaml` and environment variables only.
 
 ---
 
-## ⚙️ Core Configuration (`ghost.yaml`)
+## Prerequisites
 
-Regardless of the tool or language used, the framework is configured via a single centralized configuration file named `ghost.yaml`. 
+- Python 3.10+ (for Python SDK and local Brain)
+- Node.js 18+ (for TS/JS)
+- Java 17+ and Maven (for Java demos under `demo/pw-java`)
+- Optional: Chrome/Chromium for browser tests
 
-### Step 1: Create the Configuration File
-Create a file named `ghost.yaml` in the **root directory** of your automation project:
+---
+
+## Core Configuration (`ghost.yaml`)
+
+Create `ghost.yaml` in your **project root** (or the repo root when running demos from this repository):
 
 ```yaml
-# ghost.yaml
 mcp_server:
-  url: "https://ghost-healer-brain.onrender.com"  # Live Centralized AI Brain URL
-  confidence_threshold: -1.0                      # -1.0 dynamically auto-heals all decisions
+  url: "https://ghost-healer-brain.onrender.com"
+  timeout: 30
+  confidence_threshold: 0.5
+  protocol: "mcp-first"
+  api_key: ""
 
 healing:
-  auto_patch: true                                # Dynamically patches test source files on disk
+  mode: "runtime"
+  auto_patch: true
+  cache_enabled: true
   max_retries: 3
-  cooldown_ms: 1000
+  retry_wait_seconds: 5
+  selenium_fixture_names:
+    - driver
+    - browser
+    - webdriver
+    - selenium_driver
+
+reporting:
+  output_dir: "reports/ghost"
+  save_traces: true
 ```
 
----
+Environment overrides:
 
-## 🚀 The 8 Integration Combinations (Step-by-Step)
+| Variable | Purpose |
+|----------|---------|
+| `GHOST_BRAIN_URL` | Brain URL (overrides `mcp_server.url`) |
+| `GHOST_API_KEY` | API key for secured Brain |
+| `GHOST_CONFIG` | Path to alternate `ghost.yaml` |
 
----
+Local Brain (optional):
 
-### 🟦 1. Playwright + TypeScript
-
-Follow these steps to integrate Ghost Healer into a standard TypeScript Playwright framework:
-
-#### Step 1: Install the SDK Package
-Install the TypeScript self-healing package via npm:
 ```bash
-npm install ghost-healer-ts --save-dev
+cd mcp-server
+pip install -r requirements.txt
+python -m uvicorn app.main:app --port 8000
+# Then set GHOST_BRAIN_URL=http://127.0.0.1:8000
 ```
 
-#### Step 2: Add to Configuration
-Open your standard configuration file (`playwright.config.ts`) and add the global setup, global teardown hook registration, and `actionTimeout` to ensure quick AI responses:
+---
+
+## Zero-Change vs Manual Wiring
+
+| Approach | When to use |
+|----------|-------------|
+| **Zero-change (recommended)** | Install SDK; pytest plugin / npm postinstall / JUnit service loader handle activation |
+| **Manual wiring** | Legacy projects or custom runners; examples below marked "optional" |
+
+Full zero-change reference: [docs/ZERO_CHANGE_INSTALL.md](../docs/ZERO_CHANGE_INSTALL.md)
+
+---
+
+## Demo Paths in This Repo
+
+| Combo | Demo folder / command |
+|-------|------------------------|
+| Playwright + Python | `demo/playwright-python/` |
+| Playwright + TypeScript | `demo/playwright-ts/` |
+| Playwright + JavaScript | `demo/pw-js/` |
+| Playwright + Java | `demo/pw-java` → `mvn test -Dtest=PlaywrightJavaDemo` |
+| Selenium + Python | `demo/selenium-python/` |
+| Selenium + TypeScript | `demo/selenium-ts/` |
+| Selenium + JavaScript | `demo/selenium-js/` |
+| Selenium + Java | `demo/pw-java` → `mvn test -Dtest=SeleniumJavaDemo` |
+
+From repository root:
+
+```bash
+pip install .
+ghost-healer doctor
+```
+
+---
+
+## 1. Playwright + TypeScript
+
+### Install
+
+```bash
+cd demo/playwright-ts
+npm install
+# Link or install ghost-healer-ts from ../../sdk/ts (local) or npm registry
+```
+
+### Zero-change run
+
+After `npm install ghost-healer-ts`, `postinstall` enables auto-activation. Run:
+
+```bash
+npx playwright test
+```
+
+### Optional explicit Playwright config
 
 ```typescript
 // playwright.config.ts
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
-  // 👻 Registers global self-healing hooks (deferred-parallel mode)
   globalSetup: require.resolve('ghost-healer-ts/dist/setup'),
   globalTeardown: require.resolve('ghost-healer-ts/dist/teardown'),
-  
   use: {
-    headless: false,
-    screenshot: 'only-on-failure',
-    // 👻 Fail broken elements fast (5s) to trigger AI healing quickly
-    actionTimeout: 5000, 
+    actionTimeout: 10000,
   },
 });
 ```
 
-#### Step 3: Run Your Tests
-Execute your Playwright test commands, loading the prototype interceptor via `NODE_OPTIONS`:
+If hooks are not picked up automatically:
+
 ```bash
-npx cross-env NODE_OPTIONS="-r ghost-healer-ts/dist/pw-hook.js" npx playwright test
+npx cross-env NODE_OPTIONS="-r ghost-healer-ts/auto-activate" npx playwright test
 ```
 
 ---
 
-### 🟨 2. Playwright + JavaScript
+## 2. Playwright + JavaScript
 
-Follow these steps to integrate Ghost Healer into a standard JavaScript Playwright framework:
+Same package as TypeScript (`ghost-healer-ts`).
 
-#### Step 1: Install the SDK Package
-Install the JavaScript self-healing package via npm:
 ```bash
-npm install ghost-healer-ts --save-dev
-```
-
-#### Step 2: Add to Configuration
-Open your standard config file (`playwright.config.js`) and add the global setup hook:
-
-```javascript
-// playwright.config.js
-const { defineConfig } = require('@playwright/test');
-
-module.exports = defineConfig({
-  // 👻 Global prototype interceptor registration
-  globalSetup: require.resolve('ghost-healer-ts/dist/setup'),
-  use: {
-    headless: false,
-  },
-});
-```
-
-#### Step 3: Run Your Tests
-Prepend Node's require hook and configuration path to your standard playwright command:
-```bash
-npx cross-env NODE_OPTIONS="-r ghost-healer-ts/src/pw-hook.js" GHOST_CONFIG="ghost.yaml" npx playwright test
+cd demo/pw-js
+npm install
+npx cross-env NODE_OPTIONS="-r ghost-healer-ts/auto-activate" npx playwright test
 ```
 
 ---
 
-### 🐍 3. Playwright + Python
+## 3. Playwright + Python
 
-Follow these steps to integrate Ghost Healer into a standard Python Playwright framework running `pytest`:
+### Zero-change (recommended)
 
-#### Step 1: Install the Python SDK
-Install the python self-healing library via pip:
+From repo root:
+
 ```bash
-pip install ghost-healer
+pip install .
+pytest demo/playwright-python/test_demo.py -v -s
 ```
 
-#### Step 2: Add to pytest Fixtures
-Open your standard `conftest.py` file (located in your test root or `tests/` directory) and register the dynamic `page` interceptor:
+The `ghost` pytest plugin auto-protects the `page` fixture — **no `conftest.py` required**.
+
+### Optional manual fixture
 
 ```python
-# tests/conftest.py
+# conftest.py — only if you disable the plugin
 import pytest
 from ghost_healer.adapters.playwright import protect_page
 
 @pytest.fixture
 def page(context):
-    # Create the standard Playwright page instance
-    raw_page = context.new_page()
-    
-    # 👻 Wraps the page instance with the AI self-healing interceptor
-    protected_page = protect_page(raw_page)
-    
-    yield protected_page
-    protected_page.close()
-```
-
-#### Step 3: Run Your Tests
-Simply run your `pytest` suite normally. The adapter will catch any locator failures and dynamically heal them:
-```bash
-pytest -v -s
+    raw = context.new_page()
+    yield protect_page(raw)
+    raw.close()
 ```
 
 ---
 
-### ☕ 4. Playwright + Java
+## 4. Playwright + Java
 
-Follow these steps to integrate Ghost Healer into a standard Java Playwright project running Maven or Gradle:
-
-#### Step 1: Download and Add dependencies
-If using Maven, add the standard self-healing client dependency in your `pom.xml`:
-```xml
-<!-- pom.xml -->
-<dependency>
-    <groupId>com.ghosthealer</groupId>
-    <artifactId>ghost-healer-core</artifactId>
-    <version>1.0.0</version>
-</dependency>
-```
-*(Alternatively, copy the dynamic classes `GhostPlaywright.java`, `GhostHealerExtension.java`, and `GhostDriver.java` directly into your workspace at `src/main/java/com/ghosthealer/core/`)*
-
-#### Step 2: Modify Your Page Instantiation
-Locate your standard base setup file (e.g., `src/test/java/com/example/BaseTest.java` or where you instantiate the Playwright `Page` object) and wrap the newly created page instance:
-
-```java
-// src/test/java/com/example/BaseTest.java
-package com.example;
-
-import com.microsoft.playwright.*;
-import com.ghosthealer.core.GhostPlaywright;
-import org.junit.jupiter.api.*;
-
-public class BaseTest {
-    protected Page page;
-
-    @BeforeEach
-    void setUp() {
-        Playwright playwright = Playwright.create();
-        Browser browser = playwright.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
-        BrowserContext context = browser.newContext();
-        
-        // 👻 ONE-LINE INTERCEPTION: Wraps the default page with a dynamic self-healing proxy
-        page = GhostPlaywright.protect(context.newPage());
-    }
-}
-```
-
-#### Step 3: Run Your Tests
-Execute your standard JUnit/TestNG test runners:
 ```bash
-mvn clean test
+cd demo/pw-java
+mvn clean test -Dtest=PlaywrightJavaDemo
+```
+
+Ensure `ghost.yaml` is visible from the working directory or set `GHOST_BRAIN_URL`.
+
+Optional: wrap page in base test with `GhostPlaywright.protect(page)` — see `ghost_healer/framework/java/GhostPlaywright.java`.
+
+---
+
+## 5. Selenium + TypeScript
+
+```bash
+cd demo/selenium-ts
+npm install ghost-healer-ts
+# Auto-activate via NODE_OPTIONS after install, or:
+npx cross-env NODE_OPTIONS="-r ghost-healer-ts/auto-activate" npm test
 ```
 
 ---
 
-### 🟦 5. Selenium + TypeScript
+## 6. Selenium + JavaScript
 
-Follow these steps to integrate Ghost Healer into a standard Selenium framework running TypeScript and Mocha/Jest:
-
-#### Step 1: Install the SDK Package
-Install the TS/JS self-healing library:
 ```bash
-npm install ghost-healer-ts --save-dev
-```
-
-#### Step 2: Modify Execution Command / Scripts
-Open your project's `package.json` file and append the global require hook register command:
-
-```json
-// package.json
-"scripts": {
-  "test:selenium": "cross-env GHOST_CONFIG=\"ghost.yaml\" ts-mocha --require ghost-healer-ts/selenium-setup tests/**/*.spec.ts"
-}
-```
-
-#### Step 3: Run Your Tests
-Execute the configured runner:
-```bash
-npm run test:selenium
+cd demo/selenium-js
+npm install ghost-healer-ts
+npx cross-env NODE_OPTIONS="-r ghost-healer-ts/auto-activate" npm test
 ```
 
 ---
 
-### 🟨 6. Selenium + JavaScript
+## 7. Selenium + Python
 
-Follow these steps to integrate Ghost Healer into a standard Selenium framework running JavaScript and Mocha/Jest:
+### Zero-change (recommended)
 
-#### Step 1: Install the SDK Package
-Install the TS/JS self-healing library:
 ```bash
-npm install ghost-healer-ts --save-dev
+pip install .
+pytest demo/selenium-python/test_demo.py -v -s
 ```
 
-#### Step 2: Register Setup Script in Runner
-Append the `--require` setup script parameters in your package scripts:
+Plugin auto-detects fixtures named `driver`, `browser`, `webdriver`, or `selenium_driver` (configurable in `ghost.yaml`).
 
-```json
-// package.json
-"scripts": {
-  "test:selenium-js": "cross-env GHOST_CONFIG=\"ghost.yaml\" mocha --require ghost-healer-ts/selenium-setup tests/**/*.spec.js"
-}
-```
-
-#### Step 3: Run Your Tests
-Execute the script:
-```bash
-npm run test:selenium-js
-```
-
----
-
-### 🐍 7. Selenium + Python
-
-Follow these steps to integrate Ghost Healer into a standard Selenium framework running Python and pytest:
-
-#### Step 1: Install the Python SDK
-Install the python self-healing library:
-```bash
-pip install ghost-healer
-```
-
-#### Step 2: Wrap Webdriver Instantiation
-Open your shared setup file (e.g. `tests/conftest.py` or your custom webdriver factory) and wrap the standard driver instance immediately after creation:
+### Optional manual wrap
 
 ```python
-# tests/conftest.py
-import pytest
-from selenium import webdriver
 from ghost_healer.adapters.selenium import protect_driver
 
 @pytest.fixture
 def driver():
-    options = webdriver.ChromeOptions()
-    raw_driver = webdriver.Chrome(options=options)
-    
-    # 👻 ONE-LINE ACTIVATION: Intercepts all driver.find_element actions globally
-    protect_driver(raw_driver)
-    
-    yield raw_driver
-    raw_driver.quit()
-```
-
-#### Step 3: Run Your Tests
-Execute pytest to run your selenium suite:
-```bash
-pytest tests/
+    d = webdriver.Chrome()
+    protect_driver(d)
+    yield d
+    d.quit()
 ```
 
 ---
 
-### ☕ 8. Selenium + Java
+## 8. Selenium + Java
 
-Follow these steps to integrate Ghost Healer into a standard Java Selenium project running JUnit 5:
+### Service loader (zero annotation on tests)
 
-#### Step 1: Download and Add dependencies
-If using Maven, add the standard self-healing client dependency in your `pom.xml`:
-```xml
-<!-- pom.xml -->
-<dependency>
-    <groupId>com.ghosthealer</groupId>
-    <artifactId>ghost-healer-core</artifactId>
-    <version>1.0.0</version>
-</dependency>
+Place Ghost Healer JAR/classes on the test classpath. JUnit 5 loads `GhostHealerExtension` via:
+
+`ghost_healer/framework/java/META-INF/services/org.junit.jupiter.api.extension.Extension`
+
+```bash
+cd demo/pw-java
+mvn clean test -Dtest=SeleniumJavaDemo
 ```
 
-#### Step 2: Add Extension and Annotations
-Modify your base Selenium test class (e.g., `src/test/java/com/example/BaseSeleniumTest.java`). Register the JUnit 5 self-healing callback listener and annotate your driver field:
+### Optional javaagent (all `WebDriver` fields)
+
+```bash
+export JAVA_TOOL_OPTIONS="-javaagent:path/to/ghost-healer-agent.jar"
+mvn clean test -Dtest=SeleniumJavaDemo
+```
+
+### Optional explicit annotations
 
 ```java
-// src/test/java/com/example/BaseSeleniumTest.java
-package com.example;
-
-import com.ghosthealer.core.*;
-import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
-
-@ExtendWith(GhostHealerExtension.class) // 👻 STEP 1: Registers the self-healing driver listener callbacks
-public class BaseSeleniumTest {
-
-    @GhostDriver // 👻 STEP 2: Automatically injects the dynamic self-healing proxy driver at runtime
+@ExtendWith(GhostHealerExtension.class)
+public class BaseTest {
+    @GhostDriver
     protected WebDriver driver;
-
-    @BeforeEach
-    void setUp() {
-        driver = new ChromeDriver();
-    }
 }
 ```
 
-#### Step 3: Run Your Tests
-Execute your suite with Maven:
+---
+
+## Healing Modes for Demos
+
+| `healing.mode` | What you will see |
+|----------------|-------------------|
+| `runtime` | Test retries with healed locator; may patch source if `auto_patch: true` |
+| `suggestion` | Heal logged; pending queue in `reports/ghost/pending-fixes.json` |
+| `approval` | Same; use `ghost-healer review` from repo root |
+
+---
+
+## Reports and CLI
+
+After a run:
+
+| Output | Location |
+|--------|----------|
+| Suggested fixes | `reports/ghost/suggested-fixes.json` |
+| Pending review | `reports/ghost/pending-fixes.json` |
+| Session trace | `reports/ghost/session_*.json` |
+| Brain logs | `reports/logs/mcp_server.log` (local Brain) |
+
 ```bash
-mvn clean test
+ghost-healer doctor
+ghost-healer report
+ghost-healer review
+ghost-healer review --approve-all
 ```
 
 ---
 
-## 📊 Self-Healing Output Logs & Reports
+## Troubleshooting
 
-Whenever a locator is dynamically healed by Ghost Healer, the framework logs it in the following places:
-1. **Audit Trail JSON** (`reports/ghost/suggested-fixes.json`): A clean, human-readable list showing exactly which broken selector failed, what exact healed locator replaced it, its confidence score, and the exact Page Object source file/line where it is defined.
-2. **Dynamic Patches**: The source code is updated instantly in place, permanently resolving the maintenance overhead.
+| Issue | Fix |
+|-------|-----|
+| Brain unreachable | Run `ghost-healer doctor`; check `GHOST_BRAIN_URL` and cold start on Render free tier |
+| No healing in Python Selenium | Ensure fixture is named `driver` (or listed in `selenium_fixture_names`) |
+| TS hooks not active | Confirm `NODE_OPTIONS` includes `ghost-healer-ts/auto-activate` |
+| Java driver not wrapped | Add JAR to classpath or use `-javaagent` |
+| 401 from Brain | Set `GHOST_API_KEY` to match Render env |
 
-🛡️ **Stop fixing locators manually. Deploy Ghost Healer and let AI auto-heal your suites!** 🛡️
+---
+
+## Next Steps
+
+- Main overview: [README.md](../README.md)
+- MCP migration: [docs/MIGRATION_MCP_V1.md](../docs/MIGRATION_MCP_V1.md)
+- Release gates: [release_checklist.md](../release_checklist.md)
+
+Stop fixing locators manually — run the demos, then point your own suite at the same SDK and Brain.

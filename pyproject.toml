@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ghost-healer"
-version = "1.1.0"
+version = "1.2.0"
 description = "Universal AI Self-Healing Framework for Enterprise Automation"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -39,6 +39,14 @@ ghost = "ghost_healer.plugin.pytest_ghost"
 where = ["."]
 include = ["ghost_healer*"]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "httpx>=0.25.0",
+]
+
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "mcp-server/tests"]
 python_files = "test_*.py"
+pythonpath = ["mcp-server"]

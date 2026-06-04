@@ -6,7 +6,12 @@ Public API:
   protect_driver(driver) → Selenium self-healing (Python)
   GhostEngine           → Core AI healing orchestrator
 """
-__version__ = "1.1.0"
+__version__ = "1.2.0"
+
+try:
+    import ghost_healer.autoload  # noqa: F401
+except Exception:
+    pass
 
 from ghost_healer.core.engine import GhostEngine
 from ghost_healer.adapters.playwright import protect_page

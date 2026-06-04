@@ -66,12 +66,16 @@ public class GhostHealerExtension
     // ── Field scanner ─────────────────────────────────────────────────────────
 
     private void wrapAnnotatedDriverFields(Object instance) throws Exception {
+        boolean agentMode = "true".equalsIgnoreCase(
+            System.getProperty("ghost.healer.agent.enabled", "false"));
         Class<?> clazz = instance.getClass();
 
         // Walk up the class hierarchy (covers BaseTest patterns)
         while (clazz != null && clazz != Object.class) {
             for (Field field : clazz.getDeclaredFields()) {
-                if (field.isAnnotationPresent(GhostDriver.class)
+                boolean shouldWrap = field.isAnnotationPresent(GhostDriver.class)
+                    || (agentMode && WebDriver.class.isAssignableFrom(field.getType()));
+                if (shouldWrap
                         && WebDriver.class.isAssignableFrom(field.getType())) {
                     field.setAccessible(true);
                     WebDriver original = (WebDriver) field.get(instance);

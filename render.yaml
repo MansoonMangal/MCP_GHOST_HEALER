@@ -9,11 +9,21 @@ services:
     envVars:
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: MCP_DEBUG
+        value: "false"
+      - key: LOG_LEVEL
+        value: "INFO"
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: MAX_REQUEST_BYTES
+        value: "5242880"
+      - key: GHOST_API_KEY
+        generateValue: true
       - key: MONGO_URI
         fromDatabase:
           name: ghost-db
           property: connectionString
-    healthCheckPath: /health
+    healthCheckPath: /health/ready
 
 databases:
   - name: ghost-db

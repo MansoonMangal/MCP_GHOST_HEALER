@@ -1,28 +1,85 @@
-# 🛡️ Ghost Healer: Enterprise Usage Guidelines
+# Ghost Healer Enterprise Usage Guidelines
 
-Ghost Healer provides several modes of operation to balance safety and speed in production environments.
+This guide describes safe production usage, governance, and CI/CD patterns.
 
-## ⚙️ Healing Modes
+## Healing Modes
 
-### 1. `runtime` (Default)
-The framework heals the locator and continues execution immediately. Best for non-critical regression suites.
-- **Auto-Patch**: Enabled (Source code is updated automatically).
+### `runtime`
 
-### 2. `suggestion`
-The framework does NOT heal automatically but logs the suggested locator in the report. Best for strict CI environments.
-- **Auto-Patch**: Disabled.
+- Immediately retries with healed locator.
+- Optional source patch when `auto_patch: true`.
+- Best for local development or lower-risk regression suites.
 
-### 3. `strict`
-Only heals if the AI confidence score is above a specific threshold (e.g., 0.95). Otherwise, it fails the test.
+### `suggestion`
 
-## 📊 Analytics & Governance
-Enterprise users can track:
-- **Flakiness Reduction**: Number of tests saved from failing due to UI changes.
-- **Maintenance ROI**: Calculated time saved on manual script updates.
-- **Locator Stability**: Ranking of the most unstable parts of the application.
+- No automatic retry.
+- Suggestion is logged and added to pending review queue.
+- Best for CI where deterministic behavior is required.
 
-## 🏗️ Integration with CI/CD
-To use Ghost Healer in your pipeline:
-1. Ensure the `MCP_SERVER_URL` is set in your environment.
-2. Initialize Ghost Healer using `ghost-healer init`.
-3. The framework will automatically capture screenshots and DOM snapshots for any healed failure, making it easy to review in your CI logs.
+### `approval`
+
+- Same execution behavior as `suggestion`.
+- Intended for explicit accept/reject workflows via `ghost-healer review` and pending-fix APIs.
+
+### `strict`
+
+- Allows only very high-confidence heals.
+- Fails quickly when certainty is low.
+- Recommended for critical release gates.
+
+## Tenant and Project Isolation
+
+For multi-team usage, send:
+
+- `X-Ghost-Tenant`
+- `X-Ghost-Project`
+
+These values scope feedback and analytics, and prepare the platform for per-tenant policy controls.
+
+## Security Baseline
+
+Use these production settings on Brain:
+
+- `GHOST_API_KEY` (required)
+- `CORS_ORIGINS` (restrict to allowed origins)
+- `MAX_REQUEST_BYTES` (guard large DOM payloads)
+
+Client-side:
+
+- Set `GHOST_API_KEY` in CI secrets.
+- Never commit secrets into `ghost.yaml`.
+
+## Governance and Feedback
+
+Use built-in APIs:
+
+- `POST /api/heal-feedback` (accepted/rejected)
+- `GET /api/heal-feedback-summary`
+- `GET /api/pending-fixes`
+
+Track:
+
+- acceptance rate by project
+- high-risk unstable locators
+- manual review backlog
+
+## CI/CD Recommendation
+
+### Pull Request Validation
+
+- mode: `strict` or `suggestion`
+- run stage gate:
+  - `python scripts/release_gate.py --stage beta`
+
+### Release Candidate Validation
+
+- enable Java/JS checks
+- run:
+  - `python scripts/release_gate.py --stage rc`
+
+### Production Promotion
+
+- run:
+  - `python scripts/release_gate.py --stage ga`
+- deployed SLO probe:
+  - `python scripts/verify_slo.py --base-url "<render-url>" --api-key "$GHOST_API_KEY"`

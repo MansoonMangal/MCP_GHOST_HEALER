@@ -137,6 +137,51 @@ class HealingReporter:
         except Exception as e:
             logger.warning(f"[REPORTER] Could not write to suggested-fixes.json: {e}")
 
+    def log_pending_fix(
+        self,
+        *,
+        original: str,
+        healed: str,
+        confidence: float,
+        action: str,
+        framework: str,
+        page_url: Optional[str],
+        file: Optional[str],
+        line: int,
+    ) -> None:
+        """Queue a suggested fix for human approval mode."""
+        pending_path = os.path.join(self.output_dir, "pending-fixes.json")
+        try:
+            rows: List[Dict[str, Any]] = []
+            if os.path.exists(pending_path):
+                with open(pending_path, "r", encoding="utf-8") as f:
+                    loaded = json.load(f)
+                    if isinstance(loaded, list):
+                        rows = loaded
+
+            rows.insert(
+                0,
+                {
+                    "id": f"{self.session_id}-{len(rows)+1}",
+                    "timestamp": datetime.now(
+                        timezone(timedelta(hours=5, minutes=30))
+                    ).isoformat(),
+                    "framework": framework,
+                    "file": file,
+                    "line": line,
+                    "action": action,
+                    "old_locator": original,
+                    "suggested_locator": healed,
+                    "confidence": round(confidence, 4),
+                    "page_url": page_url,
+                    "status": "pending_review",
+                },
+            )
+            with open(pending_path, "w", encoding="utf-8") as f:
+                json.dump(rows, f, indent=2, default=str)
+        except Exception as e:
+            logger.warning(f"[REPORTER] Could not write pending fix: {e}")
+
     def finalize(self) -> Optional[str]:
         """
         Write the final consolidated JSON report for this test session.
