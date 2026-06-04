@@ -67,15 +67,28 @@ Open web service → **Environment**:
 | `MONGO_URI` | Linked from `ghost-db` |
 | Service URL | e.g. `https://ghost-healer-brain.onrender.com` |
 
-### Step 4: Confirm Mongo connected
+### Step 4: Confirm database connected
 
-**Logs** tab should show:
+**Logs** tab should show **one of**:
+
+```text
+PostgreSQL connected — using persistent storage (Render Postgres)
+```
+
+or (if you use MongoDB Atlas instead):
 
 ```text
 MongoDB connected — using persistent storage (production mode)
 ```
 
-If you see `falling back to JSON files`, check `MONGO_URI` and that `dnspython` is in `requirements.txt` (already included).
+Render Blueprint provisions **PostgreSQL** (`postgresql://...`), not MongoDB. The Brain auto-detects the URI scheme.
+
+| Env var | Value |
+|---------|--------|
+| `DATABASE_URL` | Render Postgres connection string (preferred) |
+| `MONGO_URI` | Also works — use only for `mongodb+srv://` (Atlas) |
+
+If you see `Invalid URI scheme: mongodb` or `falling back to JSON files`, ensure you did **not** put a `postgresql://` URL in a variable the app treats as Mongo-only without redeploying the latest code.
 
 ### Step 5: Smoke test live Brain
 

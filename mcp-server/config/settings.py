@@ -39,7 +39,12 @@ class Settings:
 
     # ── Database ─────────────────────────────────────────────────────────
     db_path: str = os.getenv("DB_PATH", "database")
-    mongo_uri: str = os.getenv("MONGO_URI", "")
+    # Render Postgres uses DATABASE_URL; MongoDB Atlas uses MONGO_URI (mongodb+srv://)
+    database_url: str = (
+        os.getenv("DATABASE_URL", "").strip()
+        or os.getenv("MONGO_URI", "").strip()
+    )
+    mongo_uri: str = database_url  # backward-compatible alias
 
     def get_weights(self) -> Dict[str, float]:
         return {

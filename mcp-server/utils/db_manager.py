@@ -1,8 +1,10 @@
 """
 Thread-safe database manager — Hybrid Storage Layer.
 
-Production (Render): Uses MongoDB when MONGO_URI env var is set.
-Local Development:   Falls back to thread-safe JSON files with file locking.
+Production (Render):
+  - PostgreSQL when DATABASE_URL / MONGO_URI starts with postgresql://
+  - MongoDB when URI starts with mongodb:// or mongodb+srv://
+Local Development: JSON files with file locking.
 """
 import json
 import uuid
@@ -18,20 +20,39 @@ from config.settings import settings
 logger = get_logger("db_manager", settings.log_file, settings.log_level)
 
 # ── Detect storage backend ────────────────────────────────────────────────────
-_USE_MONGO = bool(settings.mongo_uri)
+_db_uri = settings.database_url
+_USE_MONGO = False
+_USE_POSTGRES = False
 _mongo_db = None
 
-if _USE_MONGO:
+if _db_uri.startswith(("mongodb://", "mongodb+srv://")):
     try:
         from pymongo import MongoClient
-        _client = MongoClient(settings.mongo_uri, serverSelectionTimeoutMS=5000)
+
+        _client = MongoClient(_db_uri, serverSelectionTimeoutMS=5000)
         _mongo_db = _client.get_database("ghost_healer")
-        logger.info("✅ MongoDB connected — using persistent storage (production mode)")
+        _USE_MONGO = True
+        logger.info("MongoDB connected — using persistent storage (production mode)")
     except Exception as e:
-        logger.warning(f"⚠️  MongoDB connection failed, falling back to JSON files: {e}")
-        _USE_MONGO = False
+        logger.warning(f"MongoDB connection failed, falling back to JSON files: {e}")
+elif _db_uri.startswith(("postgresql://", "postgres://")):
+    from utils import postgres_store
+
+    if postgres_store.connect(_db_uri):
+        _USE_POSTGRES = True
+    else:
+        logger.warning("PostgreSQL connection failed, falling back to JSON files")
+elif _db_uri:
+    logger.warning(
+        f"Unsupported database URI scheme (expected mongodb or postgresql): "
+        f"{_db_uri.split('://')[0] if '://' in _db_uri else 'unknown'} — using JSON files"
+    )
 else:
-    logger.info("📁 MONGO_URI not set — using local JSON file storage (dev mode)")
+    logger.info("DATABASE_URL / MONGO_URI not set — using local JSON file storage (dev mode)")
+
+STORAGE_BACKEND = (
+    "postgresql" if _USE_POSTGRES else "mongodb" if _USE_MONGO else "json"
+)
 
 # ── JSON File paths (dev fallback) ────────────────────────────────────────────
 DB_PATH = Path(settings.db_path)
@@ -91,7 +112,10 @@ def save_healing_record(record: Dict[str, Any]) -> str:
     record["healing_id"] = healing_id
     record.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
 
-    if _USE_MONGO:
+    if _USE_POSTGRES:
+        from utils import postgres_store
+        postgres_store.save_healing_record(record)
+    elif _USE_MONGO:
         _mongo_db["healed_locators"].insert_one({**record, "_id": healing_id})
     else:
         records = _read_json(HEALED_LOCATORS_FILE)
@@ -106,7 +130,10 @@ def save_failure_log(log_entry: Dict[str, Any]) -> None:
     """Append a failure log entry."""
     log_entry.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
 
-    if _USE_MONGO:
+    if _USE_POSTGRES:
+        from utils import postgres_store
+        postgres_store.save_failure_log(log_entry)
+    elif _USE_MONGO:
         _mongo_db["failure_logs"].insert_one(log_entry)
     else:
         logs = _read_json(FAILURE_LOGS_FILE)
@@ -118,7 +145,10 @@ def save_confidence_score(score_entry: Dict[str, Any]) -> None:
     """Append a confidence score entry."""
     score_entry.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
 
-    if _USE_MONGO:
+    if _USE_POSTGRES:
+        from utils import postgres_store
+        postgres_store.save_confidence_score(score_entry)
+    elif _USE_MONGO:
         _mongo_db["confidence_scores"].insert_one(score_entry)
     else:
         scores = _read_json(CONFIDENCE_SCORES_FILE)
@@ -128,6 +158,9 @@ def save_confidence_score(score_entry: Dict[str, Any]) -> None:
 
 def get_all_healing_records() -> List[Dict]:
     """Return all healing records sorted newest-first."""
+    if _USE_POSTGRES:
+        from utils import postgres_store
+        return postgres_store.get_all_healing_records()
     if _USE_MONGO:
         docs = list(_mongo_db["healed_locators"].find({}, {"_id": 0}).sort("timestamp", -1))
         return docs
@@ -137,6 +170,9 @@ def get_all_healing_records() -> List[Dict]:
 
 def get_healing_record_by_id(healing_id: str) -> Optional[Dict]:
     """Fetch a single healing record by its ID."""
+    if _USE_POSTGRES:
+        from utils import postgres_store
+        return postgres_store.get_healing_record_by_id(healing_id)
     if _USE_MONGO:
         doc = _mongo_db["healed_locators"].find_one({"healing_id": healing_id}, {"_id": 0})
         return doc
@@ -209,6 +245,10 @@ def save_heal_feedback(entry: Dict[str, Any]) -> None:
     entry.setdefault("timestamp", datetime.now(timezone.utc).isoformat())
     entry.setdefault("feedback_id", str(uuid.uuid4()))
 
+    if _USE_POSTGRES:
+        from utils import postgres_store
+        postgres_store.save_heal_feedback(entry)
+        return
     if _USE_MONGO:
         _mongo_db["heal_feedback"].insert_one(entry)
         return
@@ -223,7 +263,10 @@ def get_feedback_summary(
     project_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Aggregate acceptance/rejection rates for healed suggestions."""
-    if _USE_MONGO:
+    if _USE_POSTGRES:
+        from utils import postgres_store
+        rows = postgres_store.get_feedback_rows(tenant_id=tenant_id, project_id=project_id)
+    elif _USE_MONGO:
         query: Dict[str, Any] = {}
         if tenant_id:
             query["tenant_id"] = tenant_id
@@ -255,6 +298,10 @@ def save_pending_fix(entry: Dict[str, Any]) -> None:
     entry.setdefault("pending_id", str(uuid.uuid4()))
     entry.setdefault("status", "pending_review")
 
+    if _USE_POSTGRES:
+        from utils import postgres_store
+        postgres_store.save_pending_fix(entry)
+        return
     if _USE_MONGO:
         _mongo_db["pending_fixes"].insert_one(entry)
         return
@@ -271,6 +318,11 @@ def list_pending_fixes(
     limit: int = 100,
 ) -> List[Dict[str, Any]]:
     """List pending fixes for approval dashboard/CLI."""
+    if _USE_POSTGRES:
+        from utils import postgres_store
+        return postgres_store.list_pending_fixes(
+            tenant_id=tenant_id, project_id=project_id, status=status, limit=limit
+        )
     if _USE_MONGO:
         query: Dict[str, Any] = {"status": status} if status else {}
         if tenant_id:
@@ -295,6 +347,9 @@ def list_pending_fixes(
 
 def update_pending_fix_status(pending_id: str, status: str) -> bool:
     """Update pending fix status (approved/rejected/applied)."""
+    if _USE_POSTGRES:
+        from utils import postgres_store
+        return postgres_store.update_pending_fix_status(pending_id, status)
     if _USE_MONGO:
         result = _mongo_db["pending_fixes"].update_one(
             {"pending_id": pending_id},

@@ -103,11 +103,14 @@ def run_heal_locator(
 
 
 def get_health() -> Dict[str, Any]:
+    from utils.db_manager import STORAGE_BACKEND
+
     return {
         "status": "healthy",
         "version": "4.0.0",
         "engine": "real-dna-matcher",
         "protocol": "mcp-v1",
+        "storage_backend": STORAGE_BACKEND,
         "auto_heal_threshold": settings.auto_heal_threshold,
         "mcp_endpoint": "/mcp",
     }
