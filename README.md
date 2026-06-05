@@ -1,36 +1,373 @@
 # Ghost Healer: Universal AI Self-Healing Automation Platform
 
-Language-agnostic, zero-refactor self-healing for **Playwright** and **Selenium** across **Python, TypeScript, JavaScript, and Java**. Install an SDK, point tests at the AI Brain, and healing runs without changing test scripts.
+> **🏗️ Architecture, QA problems & universal framework design → [FRAMEWORK.md](FRAMEWORK.md)**  
+> *(Problem statement, how Ghost Healer solves real QA pain, MCP Brain architecture, and why it works across all languages and tools.)*
 
-For step-by-step demos across all eight language/tool combinations, see [demo/README.md](demo/README.md).
+Language-agnostic, zero-refactor self-healing for **Playwright** and **Selenium** across **Python, TypeScript, JavaScript, and Java**.
+
+**Install the SDK → run your existing tests.** No API key. No login. No locator rewrites.
+
+Hosted Brain (default): `https://ghost-healer-brain.onrender.com`
 
 ---
 
 ## What It Does
 
-- Intercepts locator failures at runtime (no custom locator wrappers in tests).
-- Sends DOM snapshots to a centralized **AI Brain** for similarity-based matching.
-- Retries failed steps with healed locators when confidence is high enough.
-- Optionally patches source files on disk (`runtime` mode).
-- Queues fixes for human review (`suggestion` / `approval` modes).
-- Records heals in `reports/ghost/` for audit and feedback.
+- Intercepts locator failures at runtime
+- Sends DOM snapshots to the **AI Brain** for similarity-based matching
+- Retries failed steps with healed locators when confidence is high enough
+- Optionally patches source files on disk (`runtime` mode)
+- Records heals in `reports/ghost/` for audit and feedback
 
 ---
 
-## Architecture (MCP-First)
+## Supported Matrix
+
+| Language | Playwright | Selenium |
+|----------|:----------:|:--------:|
+| **Python** | ✅ pytest plugin | ✅ auto fixture wrap |
+| **TypeScript** | ✅ auto-activate | ✅ auto-activate |
+| **JavaScript** | ✅ auto-activate | ✅ auto-activate |
+| **Java** | ✅ `GhostPlaywright.protect()` | ✅ JUnit 5 extension |
+
+---
+
+## How to Use — Step by Step (Every Language × Tool)
+
+All combinations use **install-only Brain access** — the SDK ships a built-in key and provisions `~/.ghost/credentials.json` automatically.
+
+### Healing flow (all languages)
+
+| Run | What happens |
+|-----|----------------|
+| **1st run** | Broken locator may still fail (failure is recorded) |
+| **After suite** | Ghost calls the Brain and patches your source files |
+| **2nd run** | Healed locator is used — test should pass |
+
+---
+
+### 1. Python + Playwright
+
+**Install**
+
+```bash
+pip install ghost-healer
+```
+
+**Run** — no changes to test files or `conftest.py`:
+
+```bash
+pytest
+```
+
+The pytest plugin auto-wraps the `page` fixture when `pytest-playwright` is installed.
+
+**Example test** (write as normal):
+
+```python
+def test_login(page):
+    page.goto("https://example.com")
+    page.locator("#submit").click()
+```
+
+**Verify (optional):** `ghost-healer doctor`
+
+**Detailed guide:** [docs/PYTHON_USAGE.md](docs/PYTHON_USAGE.md)
+
+---
+
+### 2. Python + Selenium
+
+**Install**
+
+```bash
+pip install ghost-healer
+```
+
+**Run:**
+
+```bash
+pytest
+```
+
+The pytest plugin auto-wraps Selenium fixtures: `driver`, `browser`, `webdriver`, `selenium_driver` (configurable in `ghost.yaml`).
+
+**Example test** (write as normal):
+
+```python
+def test_search(driver):
+    driver.get("https://example.com")
+    driver.find_element("id", "search-btn").click()
+```
+
+**Verify (optional):** `ghost-healer doctor`
+
+**Detailed guide:** [docs/PYTHON_USAGE.md](docs/PYTHON_USAGE.md)
+
+---
+
+### 3. TypeScript + Playwright
+
+**Install** (in your Playwright project root):
+
+```bash
+npm install ghost-healer-ts-sdk
+```
+
+On install the SDK adds `NODE_OPTIONS=--require ghost-healer-ts-sdk/auto-activate` to `.env` and injects hooks + `globalSetup`/`globalTeardown`. **Do not edit `playwright.config.ts`.**
+
+**Run:**
+
+```bash
+npx ghost-playwright test
+# or
+npx playwright test
+```
+
+**Recommended `package.json` scripts:**
+
+```json
+{
+  "scripts": {
+    "test": "ghost-playwright test",
+    "test:headed": "ghost-playwright test --headed"
+  }
+}
+```
+
+**Verify (optional):** `npx ghost-healer doctor`
+
+**Detailed guide:** [docs/PLAYWRIGHT_TS_USAGE.md](docs/PLAYWRIGHT_TS_USAGE.md)
+
+---
+
+### 4. TypeScript + Selenium
+
+**Install:**
+
+```bash
+npm install ghost-healer-ts-sdk selenium-webdriver
+```
+
+`postinstall` sets `NODE_OPTIONS` — Selenium `findElement` hooks load when `selenium-webdriver` is present.
+
+**Run:**
+
+```bash
+npm test
+# or your Mocha/Jest runner — NODE_OPTIONS activates Ghost automatically
+```
+
+**Verify (optional):** `npx ghost-healer doctor`
+
+**Detailed guide:** [docs/PLAYWRIGHT_TS_USAGE.md](docs/PLAYWRIGHT_TS_USAGE.md) (same npm package)
+
+---
+
+### 5. JavaScript + Playwright
+
+Same package and flow as TypeScript.
+
+**Install:**
+
+```bash
+npm install ghost-healer-ts-sdk
+```
+
+**Run:**
+
+```bash
+npx ghost-playwright test
+```
+
+**Verify (optional):** `npx ghost-healer doctor`
+
+**Detailed guide:** [docs/JAVASCRIPT_USAGE.md](docs/JAVASCRIPT_USAGE.md)
+
+---
+
+### 6. JavaScript + Selenium
+
+**Install:**
+
+```bash
+npm install ghost-healer-ts-sdk selenium-webdriver
+```
+
+**Run:**
+
+```bash
+npm test
+```
+
+**Verify (optional):** `npx ghost-healer doctor`
+
+**Detailed guide:** [docs/JAVASCRIPT_USAGE.md](docs/JAVASCRIPT_USAGE.md)
+
+---
+
+### 7. Java + Playwright
+
+**Setup** — add classes from `ghost_healer/framework/java/` to your test classpath (see `demo/pw-java/`).
+
+**Wire once** in your test base class:
+
+```java
+import com.ghosthealer.core.GhostPlaywright;
+import com.microsoft.playwright.Page;
+
+@BeforeEach
+void setUp() {
+    page = GhostPlaywright.protect(
+        playwright.chromium().launch().newPage()
+    );
+}
+```
+
+**Run:**
+
+```bash
+mvn test
+```
+
+Brain access is automatic — `GhostCredentials` provisions the built-in SDK key on first class load.
+
+**Detailed guide:** [docs/JAVA_USAGE.md](docs/JAVA_USAGE.md)
+
+---
+
+### 8. Java + Selenium
+
+**Setup** — add classes from `ghost_healer/framework/java/` to your test classpath.
+
+**Option A — One annotation on base test (recommended):**
+
+```java
+import org.junit.jupiter.api.extension.ExtendWith;
+import com.ghosthealer.core.GhostHealerExtension;
+import com.ghosthealer.core.GhostDriver;
+
+@ExtendWith(GhostHealerExtension.class)
+public class BaseTest {
+
+    @GhostDriver
+    protected WebDriver driver;
+
+    @BeforeEach
+    void setUp() {
+        driver = new ChromeDriver();
+    }
+}
+```
+
+Subclass tests need **no Ghost imports** — all `findElement` calls are auto-healed.
+
+**Option B — Javaagent (zero annotations):**
+
+```bash
+export JAVA_TOOL_OPTIONS="-javaagent:path/to/ghost-healer-agent.jar"
+mvn test
+```
+
+**Run:**
+
+```bash
+mvn test
+```
+
+**Detailed guide:** [docs/JAVA_USAGE.md](docs/JAVA_USAGE.md)
+
+---
+
+## Quick Reference Table
+
+| # | Language | Tool | Install | Run | Edit tests? |
+|---|----------|------|---------|-----|-------------|
+| 1 | Python | Playwright | `pip install ghost-healer` | `pytest` | No |
+| 2 | Python | Selenium | `pip install ghost-healer` | `pytest` | No |
+| 3 | TypeScript | Playwright | `npm i ghost-healer-ts-sdk` | `npx ghost-playwright test` | No |
+| 4 | TypeScript | Selenium | `npm i ghost-healer-ts-sdk selenium-webdriver` | `npm test` | No |
+| 5 | JavaScript | Playwright | `npm i ghost-healer-ts-sdk` | `npx ghost-playwright test` | No |
+| 6 | JavaScript | Selenium | `npm i ghost-healer-ts-sdk selenium-webdriver` | `npm test` | No |
+| 7 | Java | Playwright | Add `framework/java` to classpath | `mvn test` | One `protect()` line |
+| 8 | Java | Selenium | Add `framework/java` to classpath | `mvn test` | One `@ExtendWith` on base |
+
+**No API key. No login. No `.env` secrets** for the hosted Brain.
+
+---
+
+## What You Never Need to Do
+
+| Do not… | Why |
+|---------|-----|
+| Copy `GHOST_API_KEY` from Render | SDK has built-in access |
+| Run `ghost-healer login` | Optional — only for private Brain |
+| Rewrite locators in tests | Hooks intercept failures |
+| Add locator wrapper classes | Adapters patch at runtime |
+| Edit Playwright config (TS/JS) | Auto-injected via `NODE_OPTIONS` |
+
+---
+
+## Verify Setup (optional)
+
+```bash
+npx ghost-healer doctor    # TypeScript / JavaScript
+ghost-healer doctor        # Python
+```
+
+Expected:
+
+```text
+Access     : SDK built-in (install-only)
+API key    : configured ✓
+Brain      : healthy ✓
+```
+
+---
+
+## Optional Configuration
+
+`ghost.yaml` at project root is **not required**. Use it for custom thresholds or healing mode:
+
+```yaml
+mcp_server:
+  url: "https://ghost-healer-brain.onrender.com"
+  confidence_threshold: 0.5
+
+healing:
+  mode: "runtime"    # runtime | suggestion | approval | strict
+  auto_patch: true
+  cache_enabled: true
+
+reporting:
+  output_dir: "reports/ghost"
+```
+
+### Healing modes
+
+| Mode | Behavior |
+|------|----------|
+| `runtime` | Heal + retry; optional auto-patch to source files |
+| `suggestion` | Suggest heal; queue for review; no auto-retry |
+| `approval` | Same as suggestion; review via `ghost-healer review` |
+| `strict` | Only very high-confidence heals applied |
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    subgraph clients [TestSDKs]
+    subgraph clients [Test SDKs]
         PY[Python ghost_healer]
-        TS[TS/JS ghost-healer-ts]
+        TS[TS/JS ghost-healer-ts-sdk]
         JV[Java framework]
     end
 
     subgraph brain [AI Brain on Render]
         MCP[MCP tools at /mcp]
         REST[REST /api/heal-locator]
-        SHIM[MCP REST shim /api/mcp/v1/tools]
+        SHIM[MCP REST shim]
     end
 
     PY --> SHIM
@@ -44,77 +381,32 @@ flowchart LR
 |--------|----------|------|
 | SDK / adapters | `ghost_healer/`, `sdk/ts/`, `ghost_healer/framework/java/` | Auto-activation, interceptors, reporting |
 | AI Brain | `mcp-server/` | FastAPI + MCP gateway, healing pipeline, storage |
-| Config | `ghost.yaml` | Brain URL, thresholds, healing mode, tenant/project |
-
-Default production Brain: `https://ghost-healer-brain.onrender.com`
+| Config | `ghost.yaml` (optional) | Thresholds, healing mode, tenant/project |
 
 ---
 
-## Supported Matrix
+## Demos
 
-| Language | Playwright | Selenium |
-|----------|------------|----------|
-| Python | Yes (pytest plugin) | Yes (auto fixture detection) |
-| TypeScript | Yes (auto-activate) | Yes (auto-activate) |
-| JavaScript | Yes (auto-activate) | Yes (auto-activate) |
-| Java | Yes (`demo/pw-java`) | Yes (JUnit 5 + optional javaagent) |
+Working examples for all eight combinations: [demo/README.md](demo/README.md)
 
 ---
 
-## Quick Start — All Languages
+## Documentation Index
 
-| Language | Install | Run | Guide |
-|----------|---------|-----|-------|
-| **Playwright TS** | `npm install ghost-healer-ts-sdk` | `npx ghost-playwright test` | [PLAYWRIGHT_TS_USAGE.md](docs/PLAYWRIGHT_TS_USAGE.md) |
-| **JavaScript** | `npm install ghost-healer-ts-sdk` | `npx ghost-playwright test` | [JAVASCRIPT_USAGE.md](docs/JAVASCRIPT_USAGE.md) |
-| **Python** | `pip install ghost-healer` | `pytest` | [PYTHON_USAGE.md](docs/PYTHON_USAGE.md) |
-| **Java** | Add `framework/java` to classpath | `mvn test` | [JAVA_USAGE.md](docs/JAVA_USAGE.md) |
-
-**No API key. No login. No test file changes** (Java: one `@ExtendWith` on base test or javaagent).
-
-See [docs/ZERO_CHANGE_INSTALL.md](docs/ZERO_CHANGE_INSTALL.md) for the full matrix.
-
-### Optional `ghost.yaml`
-
-```yaml
-mcp_server:
-  url: "https://ghost-healer-brain.onrender.com"
-  protocol: "mcp-first"
-  confidence_threshold: 0.5
-  api_key: ""   # or set GHOST_API_KEY in CI
-
-healing:
-  mode: "runtime"    # runtime | suggestion | approval | strict
-  auto_patch: true
-  cache_enabled: true
-
-reporting:
-  output_dir: "reports/ghost"
-```
-
-### Verify (optional)
-
-```bash
-npx ghost-healer doctor    # Node
-ghost-healer doctor        # Python
-```
+| Doc | Contents |
+|-----|----------|
+| **[FRAMEWORK.md](FRAMEWORK.md)** | **Architecture, QA problems, universal design, how it solves real-world pain** |
+| [ZERO_CHANGE_INSTALL.md](docs/ZERO_CHANGE_INSTALL.md) | Master install guide |
+| [PLAYWRIGHT_TS_USAGE.md](docs/PLAYWRIGHT_TS_USAGE.md) | Playwright + TypeScript |
+| [JAVASCRIPT_USAGE.md](docs/JAVASCRIPT_USAGE.md) | Playwright/Selenium + JavaScript |
+| [PYTHON_USAGE.md](docs/PYTHON_USAGE.md) | Playwright/Selenium + Python |
+| [JAVA_USAGE.md](docs/JAVA_USAGE.md) | Playwright/Selenium + Java |
+| [DEPLOY_COMPLETE.md](docs/DEPLOY_COMPLETE.md) | Deploy Brain to Render |
+| [enterprise_usage.md](docs/enterprise_usage.md) | CI/CD, governance, private Brain |
 
 ---
 
-## Healing Modes
-
-| Mode | Behavior |
-|------|----------|
-| `runtime` | Heal + retry; optional auto-patch to source files |
-| `suggestion` | Suggest heal; queue to `reports/ghost/pending-fixes.json`; no auto-retry |
-| `approval` | Same as suggestion; review via `ghost-healer review` |
-| `strict` | Only very high-confidence heals applied |
-
----
-
-## AI Brain (MCP Server)
-
-Run locally:
+## AI Brain (self-host)
 
 ```bash
 cd mcp-server
@@ -122,18 +414,7 @@ pip install -r requirements.txt
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Key endpoints:
-
-| Endpoint | Purpose |
-|----------|---------|
-| `GET /health`, `GET /health/ready` | Liveness / readiness |
-| `POST /api/heal-locator` | Legacy-compatible heal API |
-| `POST /api/mcp/v1/tools/{tool_name}` | MCP tool invocation over REST |
-| `/mcp` | Model Context Protocol (Streamable HTTP mount) |
-| `POST /api/heal-feedback` | Accept/reject feedback for adaptive scoring |
-| `GET /api/pending-fixes` | Human-in-the-loop approval queue |
-
-Deploy with [render.yaml](render.yaml). **Step-by-step:** [docs/DEPLOY_COMPLETE.md](docs/DEPLOY_COMPLETE.md). Set `GHOST_API_KEY` in production.
+Deploy with [render.yaml](render.yaml) — see [docs/DEPLOY_COMPLETE.md](docs/DEPLOY_COMPLETE.md).
 
 ---
 
@@ -141,53 +422,23 @@ Deploy with [render.yaml](render.yaml). **Step-by-step:** [docs/DEPLOY_COMPLETE.
 
 ```text
 MCP_CLIENT_SERVER_PROJECT/
-├── ghost_healer/           # Python SDK, adapters, pytest plugin, CLI
-├── sdk/ts/                 # TypeScript/JavaScript package (ghost-healer-ts)
-├── mcp-server/             # AI Brain (FastAPI + MCP)
-│   ├── app/main.py
-│   ├── mcp_gateway/
-│   ├── controllers/
-│   └── services/
-├── ghost_healer/framework/java/  # Java client + JUnit extension + javaagent
-├── demo/                   # Examples for all 8 combinations
-├── docs/                   # Migration, zero-change install
-├── scripts/                # release_gate.py, verify_slo.py
-├── reports/ghost/          # suggested-fixes.json, pending-fixes.json
-└── ghost.yaml
+├── ghost_healer/                 # Python SDK + pytest plugin
+├── sdk/ts/                       # npm: ghost-healer-ts-sdk
+├── ghost_healer/framework/java/  # Java client + JUnit extension
+├── mcp-server/                   # AI Brain (FastAPI + MCP)
+├── demo/                         # Examples (all 8 combinations)
+├── docs/                         # Per-language usage guides
+└── scripts/                      # release_gate.py, verify_slo.py
 ```
 
 ---
 
-## Development and Release
+## Development
 
 ```bash
-# Brain + SDK tests
 python -m pytest mcp-server/tests/ tests/ -v
-
-# Staged release gates
 python scripts/release_gate.py --stage beta
-python scripts/release_gate.py --stage rc
-python scripts/release_gate.py --stage ga
 ```
-
-Docs:
-
-- [docs/MIGRATION_MCP_V1.md](docs/MIGRATION_MCP_V1.md) — upgrade from pre-MCP versions
-- [release_checklist.md](release_checklist.md) — Beta / RC / GA gates
-- [deployment_guide.md](deployment_guide.md) — Render and distribution
-
----
-
-## Roadmap
-
-| Feature | Status |
-|---------|--------|
-| MCP-first Brain + zero-change SDKs | Available |
-| Feedback loop and adaptive weights | Available (foundation) |
-| Human approval workflow | Available (CLI + pending-fixes API) |
-| Multi-modal visual healing | Planned |
-| IDE accept/reject plugins | Planned |
-| Mobile (Appium) | Research |
 
 ---
 
