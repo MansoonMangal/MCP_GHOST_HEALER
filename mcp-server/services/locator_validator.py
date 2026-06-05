@@ -95,7 +95,7 @@ def validate_locator(
         logger.warning(msg)
         return False, msg
 
-    if (action in ("click",) and not is_interactive:
+    if action in ("click",) and not is_interactive:
         msg = f"Locator '{locator}' points to non-interactive <{tag}> for action '{action}'."
         logger.warning(msg)
         return False, msg
