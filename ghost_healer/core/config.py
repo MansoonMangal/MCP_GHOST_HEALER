@@ -114,8 +114,9 @@ def resolve_config_path(config_path: Optional[str] = None) -> Tuple[Optional[str
 
 def _load_dotenv(start_dir: Optional[str] = None) -> None:
     """Load credentials + .env from project root."""
-    from ghost_healer.core.credentials import apply_global_credentials
+    from ghost_healer.core.credentials import apply_global_credentials, ensure_builtin_credentials
 
+    ensure_builtin_credentials()
     apply_global_credentials()
 
     root = Path(find_project_root(start_dir))

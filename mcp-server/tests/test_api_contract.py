@@ -37,6 +37,25 @@ def test_readiness_public_when_api_key_required(monkeypatch):
     assert r.json()["ready"] is True
 
 
+def test_sdk_public_key_accepted(monkeypatch):
+    """Published SDKs use built-in public key — no per-user login."""
+    from config.settings import settings
+
+    monkeypatch.setenv("GHOST_API_KEY", "admin-secret")
+    monkeypatch.setenv("GHOST_SDK_PUBLIC_KEY", "gh_sdk_public_test")
+    monkeypatch.setattr(settings, "api_key", "admin-secret")
+    monkeypatch.setattr(settings, "sdk_public_key", "gh_sdk_public_test")
+
+    r = client.get("/api/mcp/v1/tools")
+    assert r.status_code == 401
+
+    r = client.get("/api/mcp/v1/tools", headers={"X-API-Key": "gh_sdk_public_test"})
+    assert r.status_code == 200
+
+    r = client.get("/api/mcp/v1/tools", headers={"X-API-Key": "admin-secret"})
+    assert r.status_code == 200
+
+
 def test_list_mcp_tools():
     r = client.get("/api/mcp/v1/tools")
     assert r.status_code == 200

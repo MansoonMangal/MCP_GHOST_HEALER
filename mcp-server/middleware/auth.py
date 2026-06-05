@@ -1,7 +1,7 @@
 """
 API key authentication for REST and MCP HTTP surfaces.
 """
-from typing import Optional
+from typing import Optional, Set
 
 from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -28,16 +28,22 @@ def _is_public(path: str) -> bool:
     return False
 
 
+def _accepted_api_keys() -> Set[str]:
+    keys = {settings.api_key, settings.sdk_public_key}
+    return {k for k in keys if k}
+
+
 def verify_api_key(request: Request) -> Optional[str]:
     """Return API key if valid; None if auth disabled."""
-    if not settings.api_key:
+    accepted = _accepted_api_keys()
+    if not accepted:
         return None
 
     provided = (
         request.headers.get("X-API-Key")
         or request.headers.get("Authorization", "").replace("Bearer ", "").strip()
     )
-    if not provided or provided != settings.api_key:
+    if not provided or provided not in accepted:
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
     return provided
 
@@ -48,7 +54,7 @@ class APIKeyMiddleware(BaseHTTPMiddleware):
         if _is_public(path):
             return await call_next(request)
 
-        if settings.api_key:
+        if _accepted_api_keys():
             try:
                 verify_api_key(request)
             except HTTPException as exc:

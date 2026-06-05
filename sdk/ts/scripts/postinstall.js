@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { ensureBuiltinCredentials } = require('../src/credentials');
 
 const pkgRoot = path.join(__dirname, '..');
 const pkgName = require(path.join(pkgRoot, 'package.json')).name;
@@ -34,6 +35,8 @@ function mergeNodeOptionsValue(existing) {
 }
 
 function run() {
+  ensureBuiltinCredentials();
+
   const root = findProjectRoot();
   const envPath = path.join(root, '.env');
   let content = fs.existsSync(envPath) ? fs.readFileSync(envPath, 'utf8') : '';
@@ -67,9 +70,8 @@ function run() {
     fs.writeFileSync(envPath, content, 'utf8');
   }
 
-  console.log('[GHOST] Zero-change healing enabled for this project.');
-  console.log('[GHOST] One-time on this machine:  npx ghost-healer login');
-  console.log('[GHOST] Or IT sets GHOST_API_KEY system-wide / CI secret — no .env needed.');
+  console.log('[GHOST] Ready — install-only access to Ghost Healer Brain.');
+  console.log('[GHOST] Run: npx playwright test  (no API key or login required)');
 }
 
 try {

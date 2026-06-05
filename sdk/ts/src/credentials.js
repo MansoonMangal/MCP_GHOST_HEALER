@@ -4,7 +4,19 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const DEFAULT_BRAIN_URL = 'https://ghost-healer-brain.onrender.com';
+const BUILTIN = (() => {
+  try {
+    return require('../builtin-access.json');
+  } catch {
+    return {
+      brain_url: 'https://ghost-healer-brain.onrender.com',
+      api_key: 'gh_sdk_public_8f4a2c9e1b7d3f6a0e5c8b2d4f7a1e9',
+    };
+  }
+})();
+
+const DEFAULT_BRAIN_URL = BUILTIN.brain_url;
+const BUILTIN_API_KEY = BUILTIN.api_key;
 
 function getGhostDir() {
   return path.join(os.homedir(), '.ghost');
@@ -28,17 +40,34 @@ function saveGlobalCredentials(creds) {
   const dir = getGhostDir();
   fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   const payload = {
-    api_key: creds.api_key || '',
+    api_key: creds.api_key || BUILTIN_API_KEY,
     brain_url: creds.brain_url || DEFAULT_BRAIN_URL,
     tenant_id: creds.tenant_id || 'default',
     project_id: creds.project_id || 'default',
+    source: creds.source || 'user',
     saved_at: new Date().toISOString(),
   };
   fs.writeFileSync(getCredentialsPath(), JSON.stringify(payload, null, 2), { mode: 0o600 });
   return payload;
 }
 
-/** Apply ~/.ghost/credentials.json and optional enterprise URL to process.env */
+/** Auto-provision SDK access on first install — no manual login required. */
+function ensureBuiltinCredentials() {
+  if (loadGlobalCredentials()) return loadGlobalCredentials();
+  return saveGlobalCredentials({
+    api_key: BUILTIN_API_KEY,
+    brain_url: DEFAULT_BRAIN_URL,
+    tenant_id: 'sdk',
+    project_id: 'default',
+    source: 'builtin',
+  });
+}
+
+function getBuiltinAccess() {
+  return { brain_url: DEFAULT_BRAIN_URL, api_key: BUILTIN_API_KEY };
+}
+
+/** Apply credentials: user file → builtin SDK access (install-only). */
 function applyGlobalCredentials() {
   const creds = loadGlobalCredentials();
   if (creds) {
@@ -56,17 +85,11 @@ function applyGlobalCredentials() {
     }
   }
 
-  // Enterprise: IT hosts a JSON credentials file (internal HTTPS)
-  const credUrl = process.env.GHOST_CREDENTIALS_URL;
-  if (credUrl && !process.env.GHOST_API_KEY) {
-    try {
-      const https = require('https');
-      const http = require('http');
-      const client = credUrl.startsWith('https') ? https : http;
-      // Sync fetch not available — skip in sync path; async handled in fetchCredentialsUrl
-    } catch {
-      /* optional */
-    }
+  if (!process.env.GHOST_API_KEY) {
+    process.env.GHOST_API_KEY = BUILTIN_API_KEY;
+  }
+  if (!process.env.GHOST_BRAIN_URL) {
+    process.env.GHOST_BRAIN_URL = DEFAULT_BRAIN_URL;
   }
 }
 
@@ -77,10 +100,13 @@ function hasApiKey() {
 
 module.exports = {
   DEFAULT_BRAIN_URL,
+  BUILTIN_API_KEY,
   getGhostDir,
   getCredentialsPath,
   loadGlobalCredentials,
   saveGlobalCredentials,
+  ensureBuiltinCredentials,
+  getBuiltinAccess,
   applyGlobalCredentials,
   hasApiKey,
 };

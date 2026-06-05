@@ -17,6 +17,11 @@ class Settings:
 
     # ── Security ────────────────────────────────────────────────────────
     api_key: str = os.getenv("GHOST_API_KEY", os.getenv("API_KEY", ""))
+    # Built into published SDKs — install-only access without manual keys
+    sdk_public_key: str = os.getenv(
+        "GHOST_SDK_PUBLIC_KEY",
+        "gh_sdk_public_8f4a2c9e1b7d3f6a0e5c8b2d4f7a1e9",
+    )
     cors_origins: List[str] = _parse_cors_origins()
     max_request_bytes: int = int(os.getenv("MAX_REQUEST_BYTES", str(5 * 1024 * 1024)))
 

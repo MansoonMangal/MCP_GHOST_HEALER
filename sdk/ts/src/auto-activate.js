@@ -9,7 +9,6 @@
 const fs = require('fs');
 const path = require('path');
 const { loadProjectEnv } = require('./projectEnv');
-const { hasApiKey } = require('./credentials');
 
 const pkgName = require('../package.json').name;
 
@@ -70,8 +69,6 @@ try {
 const yamlPath = findGhostYaml();
 if (yamlPath) {
   console.log('[GHOST] auto-activate: config', yamlPath);
-} else if (!hasApiKey()) {
-  console.log('[GHOST] auto-activate: run once — npx ghost-healer login');
 } else {
-  console.log('[GHOST] auto-activate: ready');
+  console.log('[GHOST] auto-activate: ready (install-only Brain access)');
 }

@@ -105,9 +105,5 @@ export function brainHeaders(
 
 export function warnIfMissingApiKey(): void {
   loadGhostEnv();
-  if (!getApiKey()) {
-    console.warn(
-      '[GHOST] ⚠️  No API key found. Run once: npx ghost-healer login  (or IT sets GHOST_API_KEY machine-wide).'
-    );
-  }
+  /* Built-in SDK key always available — no user action required. */
 }

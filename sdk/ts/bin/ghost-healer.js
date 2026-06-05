@@ -17,6 +17,7 @@ const {
   loadGlobalCredentials,
   saveGlobalCredentials,
   applyGlobalCredentials,
+  ensureBuiltinCredentials,
   hasApiKey,
 } = require('../src/credentials');
 const { loadProjectEnv } = require('../src/projectEnv');
@@ -70,16 +71,18 @@ async function login() {
 }
 
 async function doctor() {
+  ensureBuiltinCredentials();
   loadProjectEnv();
   applyGlobalCredentials();
   const creds = loadGlobalCredentials();
   const brainUrl = process.env.GHOST_BRAIN_URL || creds?.brain_url || DEFAULT_BRAIN_URL;
   const key = (process.env.GHOST_API_KEY || '').trim();
+  const source = creds?.source === 'user' ? 'custom' : 'SDK built-in (install-only)';
 
   console.log('\n👻 Ghost Healer Doctor\n');
   console.log(`  Brain URL  : ${brainUrl}`);
-  console.log(`  Credentials: ${creds ? getCredentialsPath() : '(not logged in)'}`);
-  console.log(`  API key    : ${key ? 'configured ✓' : 'MISSING — run: npx ghost-healer login'}`);
+  console.log(`  Access     : ${source}`);
+  console.log(`  API key    : ${key ? 'configured ✓' : 'MISSING'}`);
 
   if (!key) {
     process.exit(1);
@@ -113,14 +116,14 @@ function status() {
 
 function help() {
   console.log(`
-Ghost Healer CLI (enterprise)
+Ghost Healer CLI
 
-  npx ghost-healer login              One-time login (saves ~/.ghost/credentials.json)
-  npx ghost-healer login --key=KEY    Non-interactive (CI / IT script)
-  npx ghost-healer doctor             Verify Brain connection
+  npx ghost-healer doctor             Verify Brain connection (no login needed)
+  npx ghost-healer login              Optional: use a private Brain / custom API key
+  npx ghost-healer login --key=KEY    Non-interactive custom key
   npx ghost-healer status             Show saved profile (key hidden)
 
-Enterprise IT can also set machine-wide GHOST_API_KEY — no login required.
+Install ghost-healer-ts-sdk — healing works automatically, no API key setup.
 `);
 }
 
