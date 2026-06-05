@@ -43,6 +43,7 @@ execution-traces/
 *.json
 !package.json
 !composer.json
+!sdk/ts/builtin-access.json
 !pyproject.toml
 !ghost.yaml
 
