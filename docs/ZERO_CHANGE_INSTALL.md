@@ -1,66 +1,63 @@
 # Zero-Change Install Guide
 
-**Goal:** `npm install` → `npx playwright test` — **no API key, no login, no config edits**.
+**Install SDK → run tests. No API key. No login. No secrets in project files.**
+
+| Language | Guide |
+|----------|-------|
+| **Playwright TypeScript** | [PLAYWRIGHT_TS_USAGE.md](PLAYWRIGHT_TS_USAGE.md) |
+| **JavaScript** | [JAVASCRIPT_USAGE.md](JAVASCRIPT_USAGE.md) |
+| **Python** | [PYTHON_USAGE.md](PYTHON_USAGE.md) |
+| **Java** | [JAVA_USAGE.md](JAVA_USAGE.md) |
 
 ---
 
-## TypeScript / JavaScript (Playwright + Selenium)
+## Quick commands
+
+### TypeScript / JavaScript
 
 ```bash
 npm install ghost-healer-ts-sdk
-npx playwright test
+npx ghost-playwright test
 ```
 
-That's it. The SDK:
-
-- Enables auto-healing via `NODE_OPTIONS` in `.env` (on install)
-- Connects to the hosted Brain with a **built-in SDK access key**
-- Patches Playwright hooks + globalSetup/teardown automatically
-
-Optional verify:
-
-```bash
-npx ghost-healer doctor
-```
-
----
-
-## Python (Playwright + Selenium)
+### Python
 
 ```bash
 pip install ghost-healer
 pytest
 ```
 
-Built-in Brain access — same install-only model.
-
----
-
-## Java
+### Java
 
 ```bash
+# Add framework classes to test classpath — see JAVA_USAGE.md
 mvn test
 ```
 
-Uses built-in SDK access when `ghost-healer` JAR is on the classpath (no env vars required for hosted Brain).
+---
+
+## What every SDK does automatically
+
+- Connects to `https://ghost-healer-brain.onrender.com`
+- Uses built-in SDK public key (no copy/paste from Render)
+- Provisions `~/.ghost/credentials.json` on install / first run
+- Intercepts locator failures and consults the AI Brain
+
+---
+
+## Healing flow (all languages)
+
+| Run | Result |
+|-----|--------|
+| 1st | Locator may fail; failure recorded |
+| After suite / runtime | Brain heals + patches source |
+| 2nd | Test passes with healed locator |
 
 ---
 
 ## Optional overrides (enterprise only)
 
-| Need | Command |
-|------|---------|
-| Private Brain / custom key | `npx ghost-healer login` or `GHOST_API_KEY` in CI |
+| Need | How |
+|------|-----|
+| Private Brain / custom key | `GHOST_API_KEY` in CI or `ghost-healer login` |
 | Custom thresholds | `ghost.yaml` at project root |
-
----
-
-## Healing flow
-
-| Run | Result |
-|-----|--------|
-| 1st | Locator may fail; failure recorded |
-| After suite | Brain heals + patches source |
-| 2nd | Test passes with healed locator |
-
-Brain URL: `https://ghost-healer-brain.onrender.com`

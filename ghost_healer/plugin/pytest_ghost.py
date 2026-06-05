@@ -17,9 +17,12 @@ def pytest_configure(config: pytest.Config) -> None:
         "markers",
         "ghost: Mark a test to use Ghost Healer AI self-healing.",
     )
-    # Reload settings after .env is available (zero-change: only pip install + .env key)
+    # Provision install-only Brain access (same as npm postinstall)
     try:
+        from ghost_healer.core.credentials import ensure_builtin_credentials
         from ghost_healer.core import config as cfg_module
+
+        ensure_builtin_credentials()
         cfg_module.settings = cfg_module.load_config()
     except Exception:
         pass

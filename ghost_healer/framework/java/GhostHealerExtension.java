@@ -39,7 +39,8 @@ public class GhostHealerExtension
         implements BeforeTestExecutionCallback, AfterEachCallback {
 
     static {
-        System.out.println("[GHOST] GhostHealerExtension class loaded.");
+        GhostCredentials.ensureBuiltin();
+        System.out.println("[GHOST] GhostHealerExtension class loaded (install-only Brain access).");
     }
 
     public GhostHealerExtension() {

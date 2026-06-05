@@ -82,7 +82,9 @@ def login(api_key: str, brain_url: str, tenant: str, project: str):
         raise SystemExit(1)
 
     url = brain_url or os.environ.get("GHOST_BRAIN_URL") or DEFAULT_BRAIN_URL
-    save_global_credentials(api_key=api_key, brain_url=url, tenant_id=tenant, project_id=project)
+    save_global_credentials(
+        api_key=api_key, brain_url=url, tenant_id=tenant, project_id=project, source="user"
+    )
     apply_global_credentials()
     console.print(f"[OK] Saved to {credentials_path()}")
     console.print(
@@ -98,13 +100,15 @@ def doctor():
 
     console.print("[bold blue]Ghost Healer Diagnostics[/bold blue]")
 
-    from ghost_healer.core.credentials import credentials_path, load_global_credentials
+    from ghost_healer.core.credentials import credentials_path, load_global_credentials, ensure_builtin_credentials
 
+    ensure_builtin_credentials()
     creds = load_global_credentials()
+    source = "custom" if creds and creds.get("source") == "user" else "SDK built-in (install-only)"
+
+    console.print(f"  [INFO] Access: {source}")
     if creds:
         console.print(f"  [OK] Credentials: {credentials_path()}")
-    else:
-        console.print("  [WARN] Not logged in — run: ghost-healer login")
 
     from ghost_healer.core.config import find_ghost_yaml
 
@@ -121,7 +125,7 @@ def doctor():
     if api_key:
         console.print("  [OK] API key: configured")
     else:
-        console.print("  [ERROR] API key missing — run: ghost-healer login")
+        console.print("  [ERROR] API key missing")
 
     try:
         health = brain_client.health_check()

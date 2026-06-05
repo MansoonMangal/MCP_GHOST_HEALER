@@ -14,6 +14,7 @@ import java.lang.instrument.Instrumentation;
 public class GhostHealerAgent {
 
     public static void premain(String agentArgs, Instrumentation inst) {
+        GhostCredentials.ensureBuiltin();
         System.out.println("[GHOST] GhostHealerAgent premain — registering JUnit 5 auto-extension");
         System.setProperty("junit.jupiter.extensions.autodetection.enabled", "true");
         System.setProperty("ghost.healer.agent.enabled", "true");

@@ -14,11 +14,12 @@ import java.time.Duration;
  */
 public class GhostPlaywright {
 
-    private static final String BRAIN_URL =
-        System.getenv().getOrDefault(
-            "GHOST_BRAIN_URL",
-            "https://ghost-healer-brain.onrender.com"
-        );
+    private static final String BRAIN_URL = GhostCredentials.getBrainUrl();
+
+    static {
+        GhostCredentials.ensureBuiltin();
+        System.out.println("[GHOST] GhostPlaywright ready — install-only Brain access.");
+    }
     private static final double CONFIDENCE_THRESHOLD = 0.5;
     private static final int MAX_RETRIES = 3;
 
@@ -193,6 +194,7 @@ public class GhostPlaywright {
                 HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(BRAIN_URL + "/api/heal-locator"))
                     .header("Content-Type", "application/json")
+                    .header("X-API-Key", GhostCredentials.getApiKey())
                     .POST(HttpRequest.BodyPublishers.ofString(body))
                     .timeout(Duration.ofSeconds(30))
                     .build();

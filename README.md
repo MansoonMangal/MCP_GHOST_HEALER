@@ -61,16 +61,18 @@ Default production Brain: `https://ghost-healer-brain.onrender.com`
 
 ---
 
-## Quick Start (Playwright TypeScript)
+## Quick Start — All Languages
 
-**Full guide:** [docs/PLAYWRIGHT_TS_USAGE.md](docs/PLAYWRIGHT_TS_USAGE.md)
+| Language | Install | Run | Guide |
+|----------|---------|-----|-------|
+| **Playwright TS** | `npm install ghost-healer-ts-sdk` | `npx ghost-playwright test` | [PLAYWRIGHT_TS_USAGE.md](docs/PLAYWRIGHT_TS_USAGE.md) |
+| **JavaScript** | `npm install ghost-healer-ts-sdk` | `npx ghost-playwright test` | [JAVASCRIPT_USAGE.md](docs/JAVASCRIPT_USAGE.md) |
+| **Python** | `pip install ghost-healer` | `pytest` | [PYTHON_USAGE.md](docs/PYTHON_USAGE.md) |
+| **Java** | Add `framework/java` to classpath | `mvn test` | [JAVA_USAGE.md](docs/JAVA_USAGE.md) |
 
-```bash
-npm install ghost-healer-ts-sdk
-npx playwright test
-```
+**No API key. No login. No test file changes** (Java: one `@ExtendWith` on base test or javaagent).
 
-No API key, no login, no test file changes. See [docs/ZERO_CHANGE_INSTALL.md](docs/ZERO_CHANGE_INSTALL.md) for Python/Java.
+See [docs/ZERO_CHANGE_INSTALL.md](docs/ZERO_CHANGE_INSTALL.md) for the full matrix.
 
 ### Optional `ghost.yaml`
 
@@ -90,27 +92,11 @@ reporting:
   output_dir: "reports/ghost"
 ```
 
-### Install SDK and run tests
-
-**TypeScript / JavaScript**
-
-```bash
-npm install ghost-healer-ts-sdk
-npx playwright test
-# or: npx ghost-playwright test
-```
-
-**Python**
-
-```bash
-pip install ghost-healer
-pytest
-```
-
 ### Verify (optional)
 
 ```bash
-npx ghost-healer doctor
+npx ghost-healer doctor    # Node
+ghost-healer doctor        # Python
 ```
 
 ---

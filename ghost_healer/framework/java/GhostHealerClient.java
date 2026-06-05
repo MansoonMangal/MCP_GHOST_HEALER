@@ -10,8 +10,13 @@ import java.io.FileWriter;
 import java.time.Instant;
 
 public class GhostHealerClient {
-    private String brainUrl = System.getenv().getOrDefault("GHOST_BRAIN_URL", "https://ghost-healer-brain.onrender.com");
+    private String brainUrl = GhostCredentials.getBrainUrl();
     private double confidenceThreshold = Double.parseDouble(System.getenv().getOrDefault("GHOST_CONFIDENCE", "0.5"));
+
+    static {
+        GhostCredentials.ensureBuiltin();
+        System.out.println("[GHOST] Install-only Brain access ready (Java SDK).");
+    }
 
     public String healLocator(String selector, String action, String domSnapshot, String pageUrl) {
         String healed = healViaMcp(selector, action, domSnapshot, pageUrl);
@@ -26,10 +31,7 @@ public class GhostHealerClient {
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setRequestProperty("X-Ghost-Protocol", "mcp-v1");
-            String apiKey = System.getenv("GHOST_API_KEY");
-            if (apiKey != null && !apiKey.isEmpty()) {
-                conn.setRequestProperty("X-API-Key", apiKey);
-            }
+            conn.setRequestProperty("X-API-Key", GhostCredentials.getApiKey());
             conn.setDoOutput(true);
 
             String escapedSelector = selector.replace("\"", "\\\"");
@@ -49,10 +51,7 @@ public class GhostHealerClient {
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
-            String apiKey = System.getenv("GHOST_API_KEY");
-            if (apiKey != null && !apiKey.isEmpty()) {
-                conn.setRequestProperty("X-API-Key", apiKey);
-            }
+            conn.setRequestProperty("X-API-Key", GhostCredentials.getApiKey());
             conn.setDoOutput(true);
 
             String escapedSelector = selector.replace("\"", "\\\"");
