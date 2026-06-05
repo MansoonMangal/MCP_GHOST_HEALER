@@ -24,6 +24,7 @@ import { chromium } from '@playwright/test';
 import { SourceHealer } from './SourceHealer';
 import { GhostReporter, HealedEntry } from './GhostReporter';
 import { brainHeaders, warnIfMissingApiKey } from './brainAuth';
+import { validateHealProposal, isSameLocator } from './healGuards';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -173,9 +174,19 @@ export async function ghostGlobalTeardown(): Promise<void> {
           if (resp.ok) {
             const data = (await resp.json()) as { healed_locator?: string; confidence?: number };
             if (data.healed_locator && data.confidence !== undefined && data.confidence >= confThreshold) {
-              healedLocator = data.healed_locator;
-              confidence = data.confidence;
-              break;
+              const check = validateHealProposal(
+                failure.selector,
+                data.healed_locator,
+                failure.action || 'click',
+                domSnapshot
+              );
+              if (!check.ok) {
+                console.warn(`[GHOST] ⚠️  Rejected heal: ${check.reason}`);
+              } else {
+                healedLocator = data.healed_locator;
+                confidence = data.confidence;
+                break;
+              }
             } else if (data.healed_locator) {
               console.warn(`[GHOST] ⚠️  AI Brain suggested '${data.healed_locator}' but confidence ${data.confidence} is below threshold ${confThreshold}`);
             } else {
@@ -226,6 +237,10 @@ export async function ghostGlobalTeardown(): Promise<void> {
 
   for (const entry of healedEntries) {
     if (entry.healed_locator) {
+      if (isSameLocator(entry.selector, entry.healed_locator)) {
+        console.warn(`[GHOST] ⚠️  Skip patch — old and new locator are identical ('${entry.selector}')`);
+        continue;
+      }
       const result = SourceHealer.applyFix(
         entry.file,
         entry.line,

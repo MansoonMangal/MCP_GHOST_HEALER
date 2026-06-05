@@ -95,8 +95,32 @@ def validate_locator(
         logger.warning(msg)
         return False, msg
 
-    if action in ("click",) and not is_interactive:
+    if (action in ("click",) and not is_interactive:
         msg = f"Locator '{locator}' points to non-interactive <{tag}> for action '{action}'."
+        logger.warning(msg)
+        return False, msg
+
+    fill_actions = {"fill", "type", "press", "input", "press_sequentially", "selectoption"}
+    if action.lower() in fill_actions:
+        if tag not in ("input", "textarea", "select"):
+            msg = f"Locator '{locator}' is <{tag}> — not fillable for action '{action}'."
+            logger.warning(msg)
+            return False, msg
+        if tag == "input":
+            inp_type = (element.get("type") or "text").lower()
+            if inp_type in ("hidden", "submit", "button", "image", "checkbox", "radio", "file"):
+                msg = f"Locator '{locator}' input type='{inp_type}' is not fillable."
+                logger.warning(msg)
+                return False, msg
+
+    # Reject ad iframe hosts and generic layout containers for any heal
+    el_id = (element.get("id") or "").lower()
+    if el_id.startswith("aswift") or "google_ads" in el_id:
+        msg = f"Locator '{locator}' points to ad iframe host — rejected."
+        logger.warning(msg)
+        return False, msg
+    if tag in ("div", "header", "nav", "footer", "section") and action.lower() in fill_actions:
+        msg = f"Locator '{locator}' layout element <{tag}> cannot receive fill."
         logger.warning(msg)
         return False, msg
 

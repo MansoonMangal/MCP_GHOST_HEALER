@@ -10,6 +10,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { isSameLocator } from './healGuards';
 
 export interface PatchResult {
   success: boolean;
@@ -43,6 +44,13 @@ export class SourceHealer {
     };
 
     if (!filePath || !fs.existsSync(filePath)) {
+      return result;
+    }
+
+    if (isSameLocator(oldSelector, newSelector)) {
+      console.warn(
+        `[GHOST] ⚠️  SourceHealer skip — identical locator ('${oldSelector}')`
+      );
       return result;
     }
 

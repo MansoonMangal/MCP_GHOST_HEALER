@@ -1,6 +1,6 @@
 {
   "name": "ghost-healer-ts-sdk",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Universal AI Self-Healing SDK for Playwright and Selenium (TS/JS) — zero-change activation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

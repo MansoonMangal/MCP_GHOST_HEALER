@@ -13,6 +13,7 @@ const dist = path.join(root, 'dist');
 const copies = [
   ['src/credentials.js', 'dist/credentials.js'],
   ['src/projectEnv.js', 'dist/projectEnv.js'],
+  ['src/healGuards.js', 'dist/healGuards.js'],
   ['builtin-access.json', 'dist/builtin-access.json'],
 ];
 

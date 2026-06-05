@@ -32,6 +32,10 @@ from config.settings import settings
 logger = get_logger("healing_service", settings.log_file, settings.log_level)
 
 
+def _normalize_locator(locator: str) -> str:
+    return (locator or "").strip()
+
+
 def heal(
     original_locator: str,
     dom_snapshot: str,
@@ -109,6 +113,14 @@ def heal(
         )
         if validation_passed:
             healed_locator = best["locator"]
+            if _normalize_locator(healed_locator) == _normalize_locator(original_locator):
+                logger.warning(
+                    f"[{healing_id}] Healed locator identical to original — rejecting no-op heal."
+                )
+                healed_locator = None
+                decision = "FAIL"
+                validation_passed = False
+                validation_msg = "Healed locator identical to original selector."
         else:
             # Validation failed — downgrade decision
             logger.warning(f"[{healing_id}] Validation failed: {validation_msg}. Downgrading to FAIL.")

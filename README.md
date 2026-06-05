@@ -447,7 +447,8 @@ Working examples for all eight combinations: [demo/README.md](demo/README.md)
 
 | Doc | Contents |
 |-----|----------|
-| **[SELF_HOST_AND_PUBLISH.md](docs/SELF_HOST_AND_PUBLISH.md)** | **Clone → deploy Brain on Render → publish your own SDKs** |
+| **[SAFE_HEALING_DEMO.md](docs/SAFE_HEALING_DEMO.md)** | Avoid cascading bad patches; safe demo scenarios |
+| **[SELF_HOST_AND_PUBLISH.md](docs/SELF_HOST_AND_PUBLISH.md)** | Clone → deploy Brain on Render → publish your own SDKs |
 | **[FRAMEWORK.md](FRAMEWORK.md)** | **Architecture, QA problems, universal design, how it solves real-world pain** |
 | [ZERO_CHANGE_INSTALL.md](docs/ZERO_CHANGE_INSTALL.md) | Master install guide |
 | [PLAYWRIGHT_TS_USAGE.md](docs/PLAYWRIGHT_TS_USAGE.md) | Playwright + TypeScript |

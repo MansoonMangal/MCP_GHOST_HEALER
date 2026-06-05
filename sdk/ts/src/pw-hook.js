@@ -28,6 +28,7 @@ const fs     = require('fs');
 const path   = require('path');
 const yaml   = require('js-yaml');
 const { loadProjectEnv } = require('./projectEnv');
+const { isSameLocator, validateHealProposal } = require('./healGuards');
 const originalLoad = Module._load;
 
 loadProjectEnv();
@@ -138,6 +139,10 @@ function getQueueDir() {
 
 function applySourceFix(filePath, lineNumber, oldSelector, newSelector) {
   if (!filePath || !fs.existsSync(filePath)) return false;
+  if (isSameLocator(oldSelector, newSelector)) {
+    console.warn(`[GHOST] ⚠️  Skip patch — identical locator ('${oldSelector}')`);
+    return false;
+  }
   try {
     const lines = fs.readFileSync(filePath, 'utf8').split('\n');
     const esc   = oldSelector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -205,6 +210,7 @@ async function handleFailure(page, selector, action, locator = null) {
   let htmlPath = '';
   
   try {
+    await page.waitForLoadState('domcontentloaded', { timeout: 8000 }).catch(() => {});
     const ssFile = path.join(ssDir, `${SESSION_ID}_${safeSelector(selector)}_${uuid}.png`);
     htmlPath = path.join(htmlDir, `${SESSION_ID}_${uuid}.html`);
     
