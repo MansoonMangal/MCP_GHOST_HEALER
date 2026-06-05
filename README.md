@@ -61,9 +61,18 @@ Default production Brain: `https://ghost-healer-brain.onrender.com`
 
 ---
 
-## Quick Start (Zero Script Changes)
+## Quick Start (Playwright TypeScript)
 
-### 1. Configure `ghost.yaml` (project root)
+**Full guide:** [docs/PLAYWRIGHT_TS_USAGE.md](docs/PLAYWRIGHT_TS_USAGE.md)
+
+```bash
+npm install ghost-healer-ts-sdk
+npx playwright test
+```
+
+No API key, no login, no test file changes. See [docs/ZERO_CHANGE_INSTALL.md](docs/ZERO_CHANGE_INSTALL.md) for Python/Java.
+
+### Optional `ghost.yaml`
 
 ```yaml
 mcp_server:
@@ -81,58 +90,27 @@ reporting:
   output_dir: "reports/ghost"
 ```
 
-See [docs/ZERO_CHANGE_INSTALL.md](docs/ZERO_CHANGE_INSTALL.md) for per-language install details.
-
-### 2. One-time login (any language)
-
-Run **once per machine** — no per-project `.env` API key:
-
-```bash
-npx ghost-healer login    # Node / Playwright TS
-ghost-healer login        # Python
-```
-
-Credentials save to `~/.ghost/credentials.json`. IT can instead set machine-wide `GHOST_API_KEY` or CI secrets.
-
-### 3. Install SDK and run tests
-
-**Python**
-
-```bash
-pip install .
-pytest demo/playwright-python/test_demo.py -v
-```
-
-The pytest plugin (`ghost`) auto-wraps `page` and common Selenium fixtures (`driver`, `browser`, `webdriver`).
+### Install SDK and run tests
 
 **TypeScript / JavaScript**
 
 ```bash
 npm install ghost-healer-ts-sdk
 npx playwright test
+# or: npx ghost-playwright test
 ```
 
-`postinstall` sets `NODE_OPTIONS=--require ghost-healer-ts-sdk/auto-activate` for zero-config hooks.
-
-**Java**
+**Python**
 
 ```bash
-cd demo/pw-java
-mvn clean test -Dtest=PlaywrightJavaDemo
+pip install ghost-healer
+pytest
 ```
 
-JUnit 5 loads `GhostHealerExtension` via service loader. Optional zero-annotation mode:
+### Verify (optional)
 
 ```bash
-export JAVA_TOOL_OPTIONS="-javaagent:path/to/ghost-healer-agent.jar"
-```
-
-### 4. Verify
-
-```bash
-ghost-healer doctor
-ghost-healer report
-ghost-healer review    # pending fixes when not in runtime mode
+npx ghost-healer doctor
 ```
 
 ---

@@ -5,14 +5,23 @@ const path = require('path');
 const os = require('os');
 
 const BUILTIN = (() => {
-  try {
-    return require('../builtin-access.json');
-  } catch {
-    return {
-      brain_url: 'https://ghost-healer-brain.onrender.com',
-      api_key: 'gh_sdk_public_8f4a2c9e1b7d3f6a0e5c8b2d4f7a1e9',
-    };
+  const candidates = [
+    path.join(__dirname, 'builtin-access.json'),
+    path.join(__dirname, '..', 'builtin-access.json'),
+  ];
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p)) {
+        return JSON.parse(fs.readFileSync(p, 'utf8'));
+      }
+    } catch {
+      /* try next */
+    }
   }
+  return {
+    brain_url: 'https://ghost-healer-brain.onrender.com',
+    api_key: 'gh_sdk_public_8f4a2c9e1b7d3f6a0e5c8b2d4f7a1e9',
+  };
 })();
 
 const DEFAULT_BRAIN_URL = BUILTIN.brain_url;

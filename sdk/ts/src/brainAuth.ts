@@ -5,7 +5,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { applyGlobalCredentials, loadGlobalCredentials } = require('./credentials');
+const credentialsModule = (() => {
+  const distPath = path.join(__dirname, 'credentials.js');
+  const srcPath = path.join(__dirname, '..', 'src', 'credentials.js');
+  if (fs.existsSync(distPath)) return require(distPath);
+  if (fs.existsSync(srcPath)) return require(srcPath);
+  throw new Error('ghost-healer-ts-sdk: credentials.js not found in dist/ or src/');
+})();
+const { applyGlobalCredentials, loadGlobalCredentials } = credentialsModule;
 
 let _envLoaded = false;
 

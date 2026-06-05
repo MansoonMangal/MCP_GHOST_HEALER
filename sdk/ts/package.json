@@ -1,6 +1,6 @@
 {
   "name": "ghost-healer-ts-sdk",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Universal AI Self-Healing SDK for Playwright and Selenium (TS/JS) — zero-change activation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -32,7 +32,7 @@
   },
   "scripts": {
     "clean": "node -e \"try{require('fs').rmSync('dist',{recursive:true,force:true})}catch(e){}\"",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && tsc && node scripts/copy-dist-assets.js",
     "prepublishOnly": "npm run build",
     "postinstall": "node scripts/postinstall.js"
   },
