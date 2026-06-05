@@ -198,7 +198,8 @@ The Brain is the **only place** healing intelligence lives.
 | `middleware/auth.py` | API key + SDK public key auth |
 | `utils/db_manager.py` | PostgreSQL (Render) or JSON fallback |
 
-**Deployed production instance:** `https://ghost-healer-brain.onrender.com`
+**Demo instance (short-term):** `https://ghost-healer-brain.onrender.com`  
+**Self-host:** Anyone can fork the repo, deploy their own Brain on Render, and publish their own SDKs — see [docs/SELF_HOST_AND_PUBLISH.md](docs/SELF_HOST_AND_PUBLISH.md).
 
 ### SDK / Adapter Layer
 
@@ -320,6 +321,7 @@ MCP_CLIENT_SERVER_PROJECT/
 | Document | Audience |
 |----------|----------|
 | [README.md](README.md) | QA engineers — install & run per language/tool |
+| [docs/SELF_HOST_AND_PUBLISH.md](docs/SELF_HOST_AND_PUBLISH.md) | **Fork, deploy Brain, publish SDKs** |
 | [docs/ZERO_CHANGE_INSTALL.md](docs/ZERO_CHANGE_INSTALL.md) | Quick install matrix |
 | [docs/architecture.md](docs/architecture.md) | Technical component reference |
 | [docs/DEPLOY_COMPLETE.md](docs/DEPLOY_COMPLETE.md) | DevOps — deploy Brain to Render |

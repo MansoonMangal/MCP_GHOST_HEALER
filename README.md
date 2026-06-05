@@ -7,7 +7,7 @@ Language-agnostic, zero-refactor self-healing for **Playwright** and **Selenium*
 
 **Install the SDK → run your existing tests.** No API key. No login. No locator rewrites.
 
-Hosted Brain (default): `https://ghost-healer-brain.onrender.com`
+> **⚠️ Demo Brain notice:** The default hosted Brain (`ghost-healer-brain.onrender.com`) is a **short-term demo** on Render free tier. For production or long-term use, **clone this repo → deploy your own Brain → publish your own SDKs** (or point SDKs at your Brain URL). Full guide: **[docs/SELF_HOST_AND_PUBLISH.md](docs/SELF_HOST_AND_PUBLISH.md)**
 
 ---
 
@@ -18,6 +18,58 @@ Hosted Brain (default): `https://ghost-healer-brain.onrender.com`
 - Retries failed steps with healed locators when confidence is high enough
 - Optionally patches source files on disk (`runtime` mode)
 - Records heals in `reports/ghost/` for audit and feedback
+
+---
+
+## Self-Host & Publish Your Own Stack
+
+**Yes — anyone can run Ghost Healer independently.** You are not locked to the demo Brain.
+
+| Goal | What to do |
+|------|------------|
+| **Try healing quickly** | `npm install ghost-healer-ts-sdk` → run tests (uses demo Brain) |
+| **Host your own Brain** | Fork repo → deploy `render.yaml` on **your** Render account |
+| **Publish your own SDKs** | Update `builtin-access.json` + credentials → `npm publish` / `twine upload` |
+| **End users** | Install **your** package → run tests (no Brain setup) |
+
+### Path A — Self-host Brain only (fastest)
+
+Keep public npm/PyPI packages; point them at your Brain:
+
+```bash
+# 1. Clone & deploy Brain on your Render (Blueprint → render.yaml)
+git clone https://github.com/MansoonMangal/MCP_GHOST_HEALER.git
+
+# 2. On Render: set GHOST_SDK_PUBLIC_KEY = gh_sdk_public_8f4a2c9e1b7d3f6a0e5c8b2d4f7a1e9
+#    (same as published SDK — so existing packages work)
+
+# 3. In your test project .env:
+GHOST_BRAIN_URL=https://YOUR-BRAIN-URL.onrender.com
+```
+
+Then `npm install ghost-healer-ts-sdk` or `pip install ghost-healer` and run tests.
+
+### Path B — Fork + publish your own SDKs (full ownership)
+
+```text
+Fork repo
+  → Generate your GHOST_SDK_PUBLIC_KEY
+  → Update sdk/ts/builtin-access.json + Python/Java credentials
+  → Deploy Brain on your Render (render.yaml)
+  → npm publish (sdk/ts) + twine upload (Python)
+  → Users: npm install @your-org/ghost-healer-ts-sdk && pytest / playwright test
+```
+
+**Step-by-step:** [docs/SELF_HOST_AND_PUBLISH.md](docs/SELF_HOST_AND_PUBLISH.md)
+
+### What you own vs what end users do
+
+| You (host/publisher) | End user (QA engineer) |
+|----------------------|------------------------|
+| Render account + Brain deploy | `npm install` or `pip install` |
+| `GHOST_API_KEY` + `GHOST_SDK_PUBLIC_KEY` on Render | Run existing tests — no keys |
+| Publish npm / PyPI (optional) | No Render access needed |
+| Update `brain_url` in SDK (Path B) | No `.env` if SDK is pre-configured |
 
 ---
 
@@ -395,6 +447,7 @@ Working examples for all eight combinations: [demo/README.md](demo/README.md)
 
 | Doc | Contents |
 |-----|----------|
+| **[SELF_HOST_AND_PUBLISH.md](docs/SELF_HOST_AND_PUBLISH.md)** | **Clone → deploy Brain on Render → publish your own SDKs** |
 | **[FRAMEWORK.md](FRAMEWORK.md)** | **Architecture, QA problems, universal design, how it solves real-world pain** |
 | [ZERO_CHANGE_INSTALL.md](docs/ZERO_CHANGE_INSTALL.md) | Master install guide |
 | [PLAYWRIGHT_TS_USAGE.md](docs/PLAYWRIGHT_TS_USAGE.md) | Playwright + TypeScript |
@@ -408,13 +461,16 @@ Working examples for all eight combinations: [demo/README.md](demo/README.md)
 
 ## AI Brain (self-host)
 
+The demo Brain is temporary. **Deploy your own** on Render (recommended) or run locally:
+
 ```bash
 cd mcp-server
 pip install -r requirements.txt
 python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-Deploy with [render.yaml](render.yaml) — see [docs/DEPLOY_COMPLETE.md](docs/DEPLOY_COMPLETE.md).
+- **Full self-host + SDK publish:** [docs/SELF_HOST_AND_PUBLISH.md](docs/SELF_HOST_AND_PUBLISH.md)
+- **Render deploy troubleshooting:** [docs/DEPLOY_COMPLETE.md](docs/DEPLOY_COMPLETE.md)
 
 ---
 
