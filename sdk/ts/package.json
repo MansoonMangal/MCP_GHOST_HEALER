@@ -1,6 +1,6 @@
 {
-  "name": "ghost-healer-ts",
-  "version": "1.2.0",
+  "name": "ghost-healer-ts-sdk",
+  "version": "1.0.1",
   "description": "Universal AI Self-Healing SDK for Playwright and Selenium (TS/JS)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,10 +14,15 @@
     "./auto-activate": "./src/auto-activate.js",
     "./pw-hook.js": "./src/pw-hook.js",
     "./selenium-setup": "./dist/selenium-setup.js",
-    "./selenium-setup.js": "./dist/selenium-setup.js"
+    "./selenium-setup.js": "./dist/selenium-setup.js",
+    "./dist/setup": "./dist/setup.js",
+    "./dist/setup.js": "./dist/setup.js",
+    "./dist/teardown": "./dist/teardown.js",
+    "./dist/teardown.js": "./dist/teardown.js"
   },
   "scripts": {
-    "build": "tsc",
+    "clean": "node -e \"try{require('fs').rmSync('dist',{recursive:true,force:true})}catch(e){}\"",
+    "build": "npm run clean && tsc",
     "prepublishOnly": "npm run build",
     "postinstall": "node -e \"try{const p=require('path');const f=p.join(__dirname,'scripts','set-node-options.js');require(f)}catch(e){}\""
   },
@@ -34,8 +39,12 @@
     "@playwright/test": ">=1.30.0"
   },
   "peerDependenciesMeta": {
-    "@playwright/test": { "optional": true },
-    "selenium-webdriver": { "optional": true }
+    "@playwright/test": {
+      "optional": true
+    },
+    "selenium-webdriver": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@playwright/test": "^1.39.0",

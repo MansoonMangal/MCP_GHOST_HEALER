@@ -23,6 +23,7 @@ import * as yaml from 'js-yaml';
 import { chromium } from '@playwright/test';
 import { SourceHealer } from './SourceHealer';
 import { GhostReporter, HealedEntry } from './GhostReporter';
+import { brainHeaders } from './brainAuth';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -157,7 +158,7 @@ export async function ghostGlobalTeardown(): Promise<void> {
         try {
           const resp = await fetch(`${brainUrl}/api/heal-locator`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: brainHeaders(config),
             body: JSON.stringify({
               selector: failure.selector, 
               action: failure.action,

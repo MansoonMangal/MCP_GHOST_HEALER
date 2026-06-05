@@ -30,9 +30,10 @@ try {
   console.warn('[GHOST] auto-activate: Playwright hook skipped:', e.message);
 }
 
-// Selenium: load compiled selenium-setup hook when webdriver is present
+// Selenium: load compiled selenium-setup (dynamic path — avoid tsc pulling dist/ as input)
 try {
-  require('../dist/selenium-setup.js');
+  const selPath = path.join(__dirname, '..', 'dist', 'selenium-setup.js');
+  require(selPath);
   console.log('[GHOST] auto-activate: Selenium hooks loaded');
 } catch (_) {
   /* optional */

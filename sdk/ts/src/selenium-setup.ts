@@ -15,6 +15,7 @@
 import { WebDriver, By } from 'selenium-webdriver';
 import * as fs from 'fs';
 import * as path from 'path';
+import { brainHeaders } from './brainAuth';
 
 const BRAIN_URL =
   process.env['GHOST_BRAIN_URL'] || 'https://ghost-healer-brain.onrender.com';
@@ -237,7 +238,7 @@ async function consultBrain(
     try {
       const resp = await fetch(`${BRAIN_URL}/api/heal-locator`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: brainHeaders(undefined),
         body: JSON.stringify({ selector, action, dom_snapshot: dom, page_url: url, framework: "selenium-js" }),
         signal: AbortSignal.timeout(30000),
       });

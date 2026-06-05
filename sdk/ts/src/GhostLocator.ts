@@ -7,6 +7,7 @@
  *   await ghost.click('#login-btn');
  */
 import { Page } from '@playwright/test';
+import { brainHeaders } from './brainAuth';
 
 export interface GhostConfig {
   brainUrl?: string;
@@ -114,7 +115,7 @@ export class GhostLocator {
         const dom = await this.page.content();
         const response = await fetch(`${this.brainUrl}/api/heal-locator`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: brainHeaders(undefined),
           body: JSON.stringify({
             selector,
             action,
