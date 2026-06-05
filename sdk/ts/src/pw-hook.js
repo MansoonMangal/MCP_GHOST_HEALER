@@ -27,7 +27,10 @@ const Module = require('module');
 const fs     = require('fs');
 const path   = require('path');
 const yaml   = require('js-yaml');
+const { loadProjectEnv } = require('./projectEnv');
 const originalLoad = Module._load;
+
+loadProjectEnv();
 
 // ── Configuration ────────────────────────────────────────────────────────────
 

@@ -142,12 +142,16 @@ reporting:
   output_dir: "reports/ghost"
 ```
 
-**Never commit the API key in yaml.** Use environment variable:
+**Never commit the API key in yaml.** Use one-time login or environment:
 
 ```powershell
-$env:GHOST_API_KEY = "<Render GHOST_API_KEY>"
+npx ghost-healer login
+# or IT / CI:
+$env:GHOST_API_KEY = "<team key>"
 $env:GHOST_BRAIN_URL = "https://ghost-healer-brain.onrender.com"   # optional override
 ```
+
+Per-project `.env` editing is **not required** when using `ghost-healer login`.
 
 ---
 
@@ -192,7 +196,8 @@ npx playwright test
 Or after publishing to npm:
 
 ```bash
-npm install ghost-healer-ts
+npm install ghost-healer-ts-sdk
+npx ghost-healer login
 npx playwright test
 ```
 

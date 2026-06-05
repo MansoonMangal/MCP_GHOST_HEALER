@@ -23,7 +23,7 @@ import * as yaml from 'js-yaml';
 import { chromium } from '@playwright/test';
 import { SourceHealer } from './SourceHealer';
 import { GhostReporter, HealedEntry } from './GhostReporter';
-import { brainHeaders } from './brainAuth';
+import { brainHeaders, warnIfMissingApiKey } from './brainAuth';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -61,6 +61,7 @@ export default async function ghostGlobalSetup(): Promise<void> {
 
   console.log('\n[GHOST] 👻 Ghost Healer activated — Deferred Parallel Healing mode.');
   console.log('[GHOST] 🧠 AI Brain URL:', process.env['GHOST_BRAIN_URL'] || 'https://ghost-healer-brain.onrender.com');
+  warnIfMissingApiKey();
   console.log('[GHOST] ℹ️  Failures will be healed after the test suite finishes.\n');
 }
 
@@ -137,6 +138,7 @@ export async function ghostGlobalTeardown(): Promise<void> {
   const confThreshold = parseFloat(String(config.mcp_server.confidence_threshold)) ?? 0.5;
 
   if (failureFiles.length > 0) {
+    warnIfMissingApiKey();
     console.log(`\n[GHOST] 🧠 Consulting AI Brain for ${failureFiles.length} failure(s) at ${brainUrl}...`);
   }
 

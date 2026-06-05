@@ -112,6 +112,35 @@ def resolve_config_path(config_path: Optional[str] = None) -> Tuple[Optional[str
     return None, root
 
 
+def _load_dotenv(start_dir: Optional[str] = None) -> None:
+    """Load credentials + .env from project root."""
+    from ghost_healer.core.credentials import apply_global_credentials
+
+    apply_global_credentials()
+
+    root = Path(find_project_root(start_dir))
+    env_name = os.environ.get("ENV_FILE", ".env")
+    for name in (env_name, ".env"):
+        env_path = root / name
+        if not env_path.is_file():
+            continue
+        try:
+            for line in env_path.read_text(encoding="utf-8").splitlines():
+                stripped = line.strip()
+                if not stripped or stripped.startswith("#"):
+                    continue
+                if "=" not in stripped:
+                    continue
+                key, _, value = stripped.partition("=")
+                key = key.strip()
+                value = value.strip().strip('"').strip("'")
+                if key and not os.environ.get(key):
+                    os.environ[key] = value
+        except OSError:
+            pass
+        break
+
+
 def load_config(config_path: Optional[str] = None) -> GhostConfig:
     """
     Load ghost.yaml from:
@@ -120,6 +149,7 @@ def load_config(config_path: Optional[str] = None) -> GhostConfig:
     3. ghost.yaml found by walking up from cwd (up to 20 levels)
     4. Safe defaults if no file found (config_dir = project root or cwd)
     """
+    _load_dotenv()
     yaml_path, config_dir = resolve_config_path(config_path)
 
     env_api_key = os.environ.get("GHOST_API_KEY", "")

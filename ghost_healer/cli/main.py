@@ -59,12 +59,52 @@ def init():
 
 
 @cli.command()
+@click.option("--key", "--api-key", "api_key", default="", help="API key (non-interactive / CI)")
+@click.option("--brain-url", default="", help="Brain URL override")
+@click.option("--tenant", default="default", help="Tenant id for analytics isolation")
+@click.option("--project", default="default", help="Project id for analytics isolation")
+def login(api_key: str, brain_url: str, tenant: str, project: str):
+    """One-time login — saves ~/.ghost/credentials.json for all projects on this machine."""
+    from ghost_healer.core.credentials import (
+        DEFAULT_BRAIN_URL,
+        credentials_path,
+        save_global_credentials,
+        apply_global_credentials,
+    )
+
+    if not api_key:
+        console.print("\n[bold]Ghost Healer — one-time login[/bold]")
+        console.print("Get your key from your team admin or Render dashboard.\n")
+        api_key = click.prompt("Paste GHOST_API_KEY", hide_input=False).strip()
+
+    if not api_key:
+        console.print("[ERROR] No API key provided.")
+        raise SystemExit(1)
+
+    url = brain_url or os.environ.get("GHOST_BRAIN_URL") or DEFAULT_BRAIN_URL
+    save_global_credentials(api_key=api_key, brain_url=url, tenant_id=tenant, project_id=project)
+    apply_global_credentials()
+    console.print(f"[OK] Saved to {credentials_path()}")
+    console.print(
+        "[green]All pytest/Playwright projects on this machine can heal — no per-project .env edits.[/green]"
+    )
+
+
+@cli.command()
 def doctor():
     """Check framework health and connection to AI Brain (MCP-first)"""
     from ghost_healer.core.config import settings
     from ghost_healer.core.mcp_client import brain_client
 
     console.print("[bold blue]Ghost Healer Diagnostics[/bold blue]")
+
+    from ghost_healer.core.credentials import credentials_path, load_global_credentials
+
+    creds = load_global_credentials()
+    if creds:
+        console.print(f"  [OK] Credentials: {credentials_path()}")
+    else:
+        console.print("  [WARN] Not logged in — run: ghost-healer login")
 
     from ghost_healer.core.config import find_ghost_yaml
 
@@ -77,6 +117,11 @@ def doctor():
     console.print(f"  [INFO] Brain URL: {settings.mcp_server.url}")
     console.print(f"  [INFO] Protocol: {settings.mcp_server.protocol}")
     console.print(f"  [INFO] Healing mode: {settings.healing.mode}")
+    api_key = os.environ.get("GHOST_API_KEY", "").strip()
+    if api_key:
+        console.print("  [OK] API key: configured")
+    else:
+        console.print("  [ERROR] API key missing — run: ghost-healer login")
 
     try:
         health = brain_client.health_check()

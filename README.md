@@ -83,7 +83,18 @@ reporting:
 
 See [docs/ZERO_CHANGE_INSTALL.md](docs/ZERO_CHANGE_INSTALL.md) for per-language install details.
 
-### 2. Install SDK and run tests
+### 2. One-time login (any language)
+
+Run **once per machine** — no per-project `.env` API key:
+
+```bash
+npx ghost-healer login    # Node / Playwright TS
+ghost-healer login        # Python
+```
+
+Credentials save to `~/.ghost/credentials.json`. IT can instead set machine-wide `GHOST_API_KEY` or CI secrets.
+
+### 3. Install SDK and run tests
 
 **Python**
 
@@ -97,13 +108,11 @@ The pytest plugin (`ghost`) auto-wraps `page` and common Selenium fixtures (`dri
 **TypeScript / JavaScript**
 
 ```bash
-cd sdk/ts && npm install && npm run build
-# In your project:
-npm install ghost-healer-ts
+npm install ghost-healer-ts-sdk
 npx playwright test
 ```
 
-`postinstall` sets `NODE_OPTIONS=--require ghost-healer-ts/auto-activate` for zero-config hooks.
+`postinstall` sets `NODE_OPTIONS=--require ghost-healer-ts-sdk/auto-activate` for zero-config hooks.
 
 **Java**
 
@@ -118,7 +127,7 @@ JUnit 5 loads `GhostHealerExtension` via service loader. Optional zero-annotatio
 export JAVA_TOOL_OPTIONS="-javaagent:path/to/ghost-healer-agent.jar"
 ```
 
-### 3. Verify
+### 4. Verify
 
 ```bash
 ghost-healer doctor

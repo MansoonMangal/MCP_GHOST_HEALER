@@ -29,10 +29,16 @@ This guide describes safe production usage, governance, and CI/CD patterns.
 
 ## Tenant and Project Isolation
 
-For multi-team usage, send:
+For multi-team usage, set at login time or via env:
 
-- `X-Ghost-Tenant`
-- `X-Ghost-Project`
+- `GHOST_TENANT_ID` → sent as `X-Ghost-Tenant`
+- `GHOST_PROJECT_ID` → sent as `X-Ghost-Project`
+
+Example:
+
+```bash
+npx ghost-healer login --tenant=acme-qa --project=checkout-suite
+```
 
 These values scope feedback and analytics, and prepare the platform for per-tenant policy controls.
 
@@ -44,10 +50,17 @@ Use these production settings on Brain:
 - `CORS_ORIGINS` (restrict to allowed origins)
 - `MAX_REQUEST_BYTES` (guard large DOM payloads)
 
-Client-side:
+Client-side credential delivery (pick one):
 
-- Set `GHOST_API_KEY` in CI secrets.
-- Never commit secrets into `ghost.yaml`.
+| Tier | Setup | Notes |
+|------|--------|-------|
+| **Developer laptop** | `npx ghost-healer login` or `ghost-healer login` once | Stores `~/.ghost/credentials.json` (mode 600) |
+| **Enterprise fleet** | IT sets machine-wide `GHOST_API_KEY` via GPO/Intune/etc. | No per-project `.env` |
+| **CI/CD** | Pipeline secret `GHOST_API_KEY` | Same key as Brain Render env |
+| **Bulk onboarding** | `ghost-healer login --key=$KEY` in IT script | Non-interactive |
+
+- Never commit secrets into `ghost.yaml` or git-tracked `.env`.
+- Rotate keys in Render → re-run `login` or update CI secret.
 
 ## Governance and Feedback
 

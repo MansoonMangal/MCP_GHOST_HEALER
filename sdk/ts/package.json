@@ -1,18 +1,27 @@
 {
   "name": "ghost-healer-ts-sdk",
-  "version": "1.0.1",
-  "description": "Universal AI Self-Healing SDK for Playwright and Selenium (TS/JS)",
+  "version": "1.2.0",
+  "description": "Universal AI Self-Healing SDK for Playwright and Selenium (TS/JS) — zero-change activation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "ghost-playwright": "./bin/ghost-playwright.js",
+    "ghost-healer": "./bin/ghost-healer.js"
+  },
   "files": [
     "dist",
     "src/auto-activate.js",
-    "src/pw-hook.js"
+    "src/pw-hook.js",
+    "src/projectEnv.js",
+    "src/credentials.js",
+    "bin",
+    "scripts/postinstall.js"
   ],
   "exports": {
     ".": "./dist/index.js",
     "./auto-activate": "./src/auto-activate.js",
     "./pw-hook.js": "./src/pw-hook.js",
+    "./projectEnv": "./src/projectEnv.js",
     "./selenium-setup": "./dist/selenium-setup.js",
     "./selenium-setup.js": "./dist/selenium-setup.js",
     "./dist/setup": "./dist/setup.js",
@@ -24,7 +33,7 @@
     "clean": "node -e \"try{require('fs').rmSync('dist',{recursive:true,force:true})}catch(e){}\"",
     "build": "npm run clean && tsc",
     "prepublishOnly": "npm run build",
-    "postinstall": "node -e \"try{const p=require('path');const f=p.join(__dirname,'scripts','set-node-options.js');require(f)}catch(e){}\""
+    "postinstall": "node scripts/postinstall.js"
   },
   "keywords": [
     "playwright",

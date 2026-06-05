@@ -17,6 +17,12 @@ def pytest_configure(config: pytest.Config) -> None:
         "markers",
         "ghost: Mark a test to use Ghost Healer AI self-healing.",
     )
+    # Reload settings after .env is available (zero-change: only pip install + .env key)
+    try:
+        from ghost_healer.core import config as cfg_module
+        cfg_module.settings = cfg_module.load_config()
+    except Exception:
+        pass
 
 
 def _selenium_fixture_names(request) -> list:
